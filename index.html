@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6f1e9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MyAmbi">
+  <title>MyAmbi</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <main class="shell">
+    <section id="auth-view" class="auth-view hidden">
+      <div class="brand-block">
+        <img src="/logo.svg" alt="" width="72" height="72">
+        <p class="eyebrow">你的舒適，會被記得</p>
+        <h1>MyAmbi</h1>
+        <p class="lead">依照時間、房間和你的感覺，讓冷氣慢慢學會什麼叫剛好。</p>
+      </div>
+
+      <form id="setup-form" class="panel hidden">
+        <h2>建立 MyAmbi 家庭</h2>
+        <p>你會成為家庭管理者，之後可邀請家人並分配房間。</p>
+        <label>你的名稱<input name="display_name" autocomplete="name" maxlength="80" required placeholder="例如：孟達"></label>
+        <label>家庭名稱<input name="household_name" maxlength="80" required value="我的家"></label>
+        <button class="primary" type="submit">建立家庭</button>
+      </form>
+
+      <form id="login-form" class="panel hidden">
+        <h2>登入 MyAmbi</h2>
+        <p>我們會寄一個安全登入連結，不需要記密碼。</p>
+        <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+        <label>你的名稱（第一次使用）<input name="display_name" autocomplete="name" maxlength="80" placeholder="例如：孟達"></label>
+        <button class="primary" type="submit">寄登入連結</button>
+        <p id="link-sent" class="success-note hidden">登入信已寄出，請到信箱點擊連結。</p>
+      </form>
+    </section>
+
+    <section id="app-view" class="hidden">
+      <header class="topbar">
+        <a class="brand" href="#rooms" aria-label="MyAmbi 首頁">
+          <img src="/logo.svg" alt="" width="38" height="38">
+          <span>MyAmbi</span>
+        </a>
+        <div class="top-actions">
+          <span id="user-name" class="user-chip"></span>
+          <button id="settings-button" class="icon-button" aria-label="設定">⚙︎</button>
+          <button id="logout-button" class="text-button">登出</button>
+        </div>
+      </header>
+
+      <section id="rooms-view">
+        <div class="hero-row">
+          <div>
+            <p class="eyebrow">現在的家</p>
+            <h1 id="greeting">晚安</h1>
+            <p id="summary" class="lead compact">正在讀取每個房間…</p>
+          </div>
+          <div id="system-pill" class="system-pill"><span></span>雲端控制中</div>
+        </div>
+        <div id="error-banner" class="error-banner hidden"></div>
+        <div id="room-grid" class="room-grid"></div>
+        <div id="empty-state" class="empty panel hidden">
+          <div class="empty-icon">⌁</div>
+          <h2>還沒有房間</h2>
+          <p class="admin-copy">可先在設定建立三個模擬房間；Sensibo 到貨後再匯入真正的冷氣。</p>
+          <p class="member-copy">可在設定中選擇要顯示的房間。</p>
+          <button id="open-settings-empty" class="primary admin-only">前往設定</button>
+        </div>
+      </section>
+
+      <section id="settings-view" class="hidden">
+        <button id="back-button" class="back-button">← 回到房間</button>
+        <div class="settings-heading">
+          <p class="eyebrow">家庭管理</p>
+          <h1>設定</h1>
+        </div>
+
+        <div class="settings-grid">
+          <section class="panel wide">
+            <span class="step">每個人自己決定</span>
+            <h2>我想看到的房間</h2>
+            <p>勾選只影響你自己的首頁，不會改變其他家人的畫面。</p>
+            <fieldset id="personal-room-choices" class="plain-fieldset"><legend>首頁顯示</legend></fieldset>
+          </section>
+
+          <section class="panel admin-only">
+            <span class="step">現在就能試</span>
+            <h2>模擬三個房間</h2>
+            <p>建立主臥、客廳、女兒房。所有按鈕和雲端學習演算法都會運作，只是不發送紅外線。</p>
+            <button id="demo-button" class="secondary">建立模擬房間</button>
+          </section>
+
+          <section class="panel admin-only">
+            <span class="step">Sensibo 到貨後</span>
+            <h2>連接 Sensibo</h2>
+            <p>先用 Sensibo 官方 App 完成 Wi‑Fi 和冷氣配對，再貼上帳號設定頁產生的 API Key。</p>
+            <label>API Key<input id="sensibo-key" type="password" autocomplete="off" placeholder="會加密存進 Supabase Vault"></label>
+            <div class="button-row">
+              <button id="save-key-button" class="secondary">連接並匯入遙控器</button>
+            </div>
+          </section>
+
+          <section class="panel wide admin-only">
+            <span class="step">每天自動執行</span>
+            <h2>各房間開關機時間</h2>
+            <p>關機狀態會啟動安全鎖，不執行溫度或風量演算法；到排程開機時間，則一次用正確溫度開機。</p>
+            <div id="schedules-list" class="schedules-list"></div>
+          </section>
+
+          <section class="panel wide admin-only">
+            <span class="step">邀請家人</span>
+            <h2>家庭成員</h2>
+            <form id="member-form" class="member-form">
+              <label>成員名稱<input name="display_name" maxlength="80" required placeholder="例如：女兒"></label>
+              <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+              <button class="primary" type="submit">新增成員</button>
+            </form>
+            <div id="members-list" class="members-list"></div>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="history-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">最近紀錄</p><h2 id="history-title">房間</h2></div>
+      <button id="close-history" class="icon-button" aria-label="關閉">×</button>
+    </div>
+    <div id="history-content" class="history-content"></div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/config.js"></script>
+  <script src="/cloud-client.js"></script>
+  <script src="/app.js" defer></script>
+</body>
+</html>
