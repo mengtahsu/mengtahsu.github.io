@@ -1,4 +1,4 @@
-const CACHE = "myambi-shell-v5";
+const CACHE = "myambi-shell-v6";
 const SHELL = ["/", "/styles.css", "/logo.svg", "/manifest.json", "/cloud-client.js", "/app.js"];
 
 self.addEventListener("install", (event) => {
@@ -27,5 +27,20 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => new URL(client.url).origin === location.origin);
+      if (existing) {
+        existing.navigate(target);
+        return existing.focus();
+      }
+      return self.clients.openWindow(target);
+    }),
   );
 });

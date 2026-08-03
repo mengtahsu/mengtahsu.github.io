@@ -1,9 +1,13 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], refreshTimer: null };
+const state = { status: null, user: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
 const roomGrid = $("#room-grid");
+
+function hideBoot() {
+  $("#boot-view").classList.add("hidden");
+}
 
 function showToast(message, isError = false) {
   const toast = $("#toast");
@@ -22,6 +26,7 @@ function setBusy(element, busy) {
 }
 
 function showAuth(mode) {
+  hideBoot();
   authView.classList.remove("hidden");
   appView.classList.add("hidden");
   $("#setup-form").classList.toggle("hidden", mode !== "setup");
@@ -49,6 +54,12 @@ async function boot() {
       showToast("尚未設定 Supabase 專案；請先完成 web/config.js", true);
       return;
     }
+    if (cloud.callbackError) {
+      showAuth("login");
+      $("#auth-error").textContent = `登入連結無法使用：${cloud.callbackError}。請重新寄一封登入信。`;
+      $("#auth-error").classList.remove("hidden");
+      return;
+    }
     state.user = await cloud.user();
     if (!state.user) return showAuth("login");
     try {
@@ -59,12 +70,18 @@ async function boot() {
     }
     authView.classList.add("hidden");
     appView.classList.remove("hidden");
+    hideBoot();
     $("#user-name").textContent = displayName();
     applyRole();
     await loadRooms();
     clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(loadRooms, 15000);
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    showAuth("login");
+    $("#auth-error").textContent = `登入沒有完成：${error.message}。請重新整理或重新寄登入連結。`;
+    $("#auth-error").classList.remove("hidden");
+    showToast(error.message, true);
+  }
 }
 
 function greeting() {
@@ -85,6 +102,8 @@ async function loadRooms() {
     state.rooms = rooms.filter((room) => room.is_visible !== false);
     state.status = status;
     state.queue = queue;
+    renderAlerts();
+    maybeNotifyAlerts();
     applyRole();
     renderRooms();
   } catch (error) { showToast(error.message, true); }
@@ -254,9 +273,15 @@ async function showSettings() {
 }
 
 async function loadSettings() {
-  const choices = await cloud.function("room-choices", {}, "GET");
+  const [choices, insights] = await Promise.all([
+    cloud.function("room-choices", {}, "GET"),
+    cloud.function("learning-insights", {}, "GET"),
+  ]);
   state.roomChoices = choices.rooms;
+  state.learning = insights.rooms;
   renderPersonalRoomChoices();
+  renderLearning();
+  renderAlerts();
   if (!isAdmin()) return;
   const result = await cloud.function("admin-state", {}, "GET");
   state.users = result.members;
@@ -265,6 +290,85 @@ async function loadSettings() {
   $("#members-list").replaceChildren(
     ...state.users.filter((user) => user.role === "member").map(memberRow),
   );
+}
+
+function renderLearning() {
+  const list = $("#learning-list");
+  const confidence = { low: "資料不足", medium: "開始穩定", high: "可信度高" };
+  const rows = [];
+  for (const room of state.learning ?? []) {
+    const useful = room.buckets.filter((bucket) => bucket.samples > 0);
+    if (!useful.length) {
+      const empty = document.createElement("div");
+      empty.className = "learning-room";
+      empty.innerHTML = `<div><strong></strong><span>還沒有回報；使用房間卡片的太冷、剛好、太熱即可開始學習。</span></div>`;
+      empty.querySelector("strong").textContent = room.name;
+      rows.push(empty);
+      continue;
+    }
+    for (const bucket of useful) {
+      const row = document.createElement("div");
+      row.className = "learning-room";
+      const direction = bucket.cold > bucket.hot
+        ? `較常覺得冷（${bucket.cold} 次）`
+        : bucket.hot > bucket.cold
+        ? `較常覺得熱（${bucket.hot} 次）`
+        : `冷熱回報平衡`;
+      row.innerHTML = `
+        <div><strong></strong><span>${bucket.label} · ${direction}</span></div>
+        <div class="learned-temperature">${Number(bucket.learned_target).toFixed(1)}°</div>
+        <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
+      `;
+      row.querySelector("strong").textContent = room.name;
+      rows.push(row);
+    }
+  }
+  list.replaceChildren(...rows);
+  if (!rows.length) list.textContent = "建立房間後，學習報告會顯示在這裡。";
+}
+
+function renderAlerts() {
+  const list = $("#alerts-list");
+  if (!list) return;
+  const alerts = state.status?.active_alerts ?? [];
+  if (!alerts.length) {
+    list.innerHTML = `<div class="health-ok"><span></span>目前沒有未解決的故障</div>`;
+    return;
+  }
+  list.replaceChildren(...alerts.map((alert) => {
+    const row = document.createElement("div");
+    row.className = `alert-row ${alert.severity}`;
+    const body = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = alert.severity === "critical" ? "需要處理" : "請留意";
+    const message = document.createElement("div");
+    message.textContent = alert.message;
+    const time = document.createElement("time");
+    time.textContent = `${new Date(alert.last_seen_at).toLocaleString("zh-TW")} · 發生 ${alert.occurrence_count} 次`;
+    body.append(title, message, time);
+    row.append(body);
+    return row;
+  }));
+}
+
+async function maybeNotifyAlerts(force = false) {
+  const alerts = state.status?.active_alerts ?? [];
+  if (!("Notification" in window) || Notification.permission !== "granted" || !alerts.length) return;
+  const storageKey = "myambi.notified-alerts";
+  let notified = [];
+  try { notified = JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch (_) {}
+  const unseen = force ? alerts : alerts.filter((alert) => !notified.includes(alert.id));
+  if (!unseen.length) return;
+  const registration = await navigator.serviceWorker?.ready;
+  for (const alert of unseen.slice(0, 3)) {
+    await registration?.showNotification("MyAmbi 冷氣需要注意", {
+      body: alert.message,
+      icon: "/logo.svg",
+      tag: `myambi-alert-${alert.id}`,
+      data: { url: "/#settings" },
+    });
+  }
+  localStorage.setItem(storageKey, JSON.stringify(alerts.map((alert) => alert.id).slice(0, 50)));
 }
 
 function roomCheck(room, checked) {
@@ -353,6 +457,8 @@ $("#setup-form").addEventListener("submit", async (event) => {
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
   try {
+    $("#auth-error").classList.add("hidden");
+    $("#link-sent").classList.add("hidden");
     const values = Object.fromEntries(new FormData(event.currentTarget));
     await cloud.sendMagicLink(values.email, values.display_name);
     $("#link-sent").classList.remove("hidden");
@@ -387,6 +493,25 @@ $("#save-key-button").addEventListener("click", async (event) => {
     showToast(`連線成功，已匯入 ${result.devices.length} 台 Sensibo`);
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(event.currentTarget, false); }
+});
+
+$("#notification-button").addEventListener("click", async (event) => {
+  if (!("Notification" in window)) {
+    showToast("這個瀏覽器不支援裝置通知；故障仍會顯示在 MyAmbi", true);
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      showToast("尚未允許通知；故障仍會保存在 MyAmbi", true);
+      return;
+    }
+    event.currentTarget.textContent = "裝置通知已開啟";
+    await maybeNotifyAlerts(true);
+    showToast("MyAmbi 故障通知已開啟");
+  } catch (_) {
+    showToast("請先把 MyAmbi 加到主畫面，再開啟通知", true);
+  }
 });
 
 $("#settings-button").addEventListener("click", showSettings);

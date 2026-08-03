@@ -17,6 +17,10 @@
   <div class="ambient ambient-b"></div>
 
   <main class="shell">
+    <section id="boot-view" class="boot-view">
+      <img src="/logo.svg" alt="" width="64" height="64">
+      <p>正在確認 MyAmbi 登入狀態…</p>
+    </section>
     <section id="auth-view" class="auth-view hidden">
       <div class="brand-block">
         <img src="/logo.svg" alt="" width="72" height="72">
@@ -39,6 +43,7 @@
         <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
         <label>你的名稱（第一次使用）<input name="display_name" autocomplete="name" maxlength="80" placeholder="例如：孟達"></label>
         <button class="primary" type="submit">寄登入連結</button>
+        <p id="auth-error" class="error-note hidden"></p>
         <p id="link-sent" class="success-note hidden">登入信已寄出，請到信箱點擊連結。</p>
       </form>
     </section>
@@ -84,6 +89,22 @@
         </div>
 
         <div class="settings-grid">
+          <section class="panel wide">
+            <span class="step">近 30 天</span>
+            <h2>我的舒適度學習報告</h2>
+            <p>依你的「太冷／剛好／太熱」紀錄，分時段顯示目前學到的溫度與可信度。</p>
+            <div id="learning-list" class="learning-list"></div>
+          </section>
+
+          <section class="panel wide">
+            <span class="step">自動巡檢</span>
+            <div class="panel-title-row">
+              <div><h2>系統健康與故障中心</h2><p>每十分鐘檢查資料中斷、命令失敗、Sensibo 與 queue 狀態。</p></div>
+              <button id="notification-button" class="secondary" type="button">允許裝置通知</button>
+            </div>
+            <div id="alerts-list" class="alerts-list"></div>
+          </section>
+
           <section class="panel wide">
             <span class="step">每個人自己決定</span>
             <h2>我想看到的房間</h2>

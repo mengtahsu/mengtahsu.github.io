@@ -3,6 +3,7 @@ class MyAmbiCloud {
     this.url = String(config?.supabaseUrl || "").replace(/\/$/, "");
     this.key = String(config?.publishableKey || "");
     this.storageKey = "myambi.supabase.session";
+    this.callbackError = this.readCallbackError();
     this.session = this.readSessionFromURL() || this.readSession();
   }
 
@@ -23,9 +24,19 @@ class MyAmbiCloud {
     return session;
   }
 
+  readCallbackError() {
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const query = new URLSearchParams(location.search);
+    const message = hash.get("error_description") || query.get("error_description") ||
+      hash.get("error") || query.get("error");
+    if (!message) return null;
+    history.replaceState({}, document.title, location.pathname);
+    return decodeURIComponent(String(message).replace(/\+/g, " "));
+  }
+
   readSession() {
     try { return JSON.parse(localStorage.getItem(this.storageKey) || "null"); }
-    catch (_) { return null; }
+    catch (_) { localStorage.removeItem(this.storageKey); return null; }
   }
 
   saveSession(session) {
@@ -39,7 +50,7 @@ class MyAmbiCloud {
   }
 
   baseHeaders(authenticated = true) {
-    const headers = { apikey: this.key, "Content-Type": "application/json" };
+    const headers = { apikey: this.key, Accept: "application/json" };
     if (authenticated && this.session?.access_token) headers.Authorization = `Bearer ${this.session.access_token}`;
     return headers;
   }
@@ -47,11 +58,22 @@ class MyAmbiCloud {
   async request(url, options = {}, authenticated = true) {
     if (!this.configured) throw new Error("請先在 web/config.js 設定 Supabase 專案");
     if (authenticated) await this.ensureSession();
+    const headers = { ...this.baseHeaders(authenticated), ...(options.headers || {}) };
+    if (options.body !== undefined && options.body !== null && !headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
     const response = await fetch(url, {
       ...options,
-      headers: { ...this.baseHeaders(authenticated), ...(options.headers || {}) },
+      headers,
     });
-    const data = await response.json().catch(() => ({}));
+    const raw = await response.text();
+    let data = {};
+    if (raw.trim()) {
+      try { data = JSON.parse(raw); }
+      catch (_) {
+        throw new Error(response.ok ? "伺服器回應格式不完整，請再試一次" : `HTTP ${response.status}`);
+      }
+    }
     if (!response.ok) throw new Error(data.error_description || data.msg || data.error || `HTTP ${response.status}`);
     return data;
   }
@@ -80,7 +102,11 @@ class MyAmbiCloud {
   async user() {
     if (!this.session) return null;
     try { return await this.request(`${this.url}/auth/v1/user`); }
-    catch (_) { this.clearSession(); return null; }
+    catch (error) {
+      this.clearSession();
+      if (error.message === "請先登入" || /401|JWT|token/i.test(error.message)) return null;
+      throw error;
+    }
   }
 
   async signOut() {
@@ -104,4 +130,3 @@ class MyAmbiCloud {
 }
 
 window.MyAmbiCloud = MyAmbiCloud;
-
