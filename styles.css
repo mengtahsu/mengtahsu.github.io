@@ -62,6 +62,7 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .user-chip { background: rgba(255,255,255,.7); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font-size: .82rem; }
 .icon-button, .text-button, .back-button { border: 0; background: transparent; color: var(--muted); padding: 9px; border-radius: 10px; }
 .icon-button:hover, .text-button:hover, .back-button:hover { background: rgba(255,255,255,.75); color: var(--ink); }
+.settings-shortcut { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 8px 11px; background: var(--green-soft); color: var(--green); font-size: .78rem; font-weight: 850; text-decoration: none; }
 
 .hero-row { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 34px; }
 .hero-row h1 { font-size: clamp(2.6rem, 7vw, 5rem); margin-bottom: .4rem; }
@@ -225,7 +226,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .learning-room > div:first-child { grid-column: 1/-1; }
   .learning-room .confidence { grid-column: 1/-1; justify-self: start; }
   .app-nav { position: fixed; z-index: 8; display: grid; grid-template-columns: 1fr 1fr; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); padding: 6px; border: 1px solid rgba(255,255,255,.9); border-radius: 20px; background: rgba(250,248,243,.9); box-shadow: 0 14px 45px rgba(20,30,25,.18); backdrop-filter: blur(18px); }
-  .app-nav-item { border: 0; border-radius: 15px; padding: 9px 12px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 800; }
+  .app-nav-item { border: 0; border-radius: 15px; padding: 9px 12px; background: transparent; color: var(--muted); font-size: .72rem; font-weight: 800; text-align: center; text-decoration: none; }
   .app-nav-item span { display: block; margin-bottom: 2px; font-size: 1.05rem; }
   .app-nav-item.active { color: white; background: var(--green); }
   .toast { bottom: calc(88px + env(safe-area-inset-bottom)); }

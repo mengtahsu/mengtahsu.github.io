@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=13">
+  <link rel="stylesheet" href="/styles.css?v=14">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -72,14 +72,14 @@
 
     <section id="app-view" class="hidden">
       <header class="topbar">
-        <a class="brand" href="#rooms" aria-label="MyAmbi 首頁">
+        <a id="brand-home" class="brand" href="#rooms" aria-label="MyAmbi 首頁">
           <img src="/logo.svg" alt="" width="38" height="38">
           <span>MyAmbi</span>
         </a>
         <div class="top-actions">
           <select id="household-switcher" class="household-switcher" aria-label="切換家"></select>
           <span id="user-name" class="user-chip"></span>
-          <button id="settings-button" class="icon-button" aria-label="設定">⚙︎</button>
+          <a id="settings-button" class="settings-shortcut" href="#settings" aria-label="前往設定"><span aria-hidden="true">⚙︎</span>設定</a>
           <button id="logout-button" class="text-button">登出</button>
         </div>
       </header>
@@ -190,8 +190,8 @@
       </section>
 
       <nav class="app-nav" aria-label="主要導覽">
-        <button id="rooms-nav" class="app-nav-item active" type="button"><span>⌂</span>房間</button>
-        <button id="settings-nav" class="app-nav-item" type="button"><span>⚙︎</span>設定</button>
+        <a id="rooms-nav" class="app-nav-item active" href="#rooms"><span>⌂</span>房間</a>
+        <a id="settings-nav" class="app-nav-item" href="#settings"><span>⚙︎</span>設定</a>
       </nav>
     </section>
   </main>
@@ -205,8 +205,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=13"></script>
-  <script src="/cloud-client.js?v=13"></script>
-  <script src="/app.js?v=13" defer></script>
+  <script src="/config.js?v=14"></script>
+  <script src="/cloud-client.js?v=14"></script>
+  <script src="/app.js?v=14" defer></script>
 </body>
 </html>

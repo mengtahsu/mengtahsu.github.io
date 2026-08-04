@@ -903,8 +903,14 @@ $("#notification-button").addEventListener("click", async (event) => {
 $("#settings-button").addEventListener("click", showSettings);
 $("#settings-nav").addEventListener("click", showSettings);
 $("#rooms-nav").addEventListener("click", () => showRooms());
+$("#brand-home").addEventListener("click", () => showRooms());
 $("#open-settings-empty").addEventListener("click", showSettings);
 $("#back-button").addEventListener("click", () => showRooms());
+window.addEventListener("hashchange", () => {
+  if ($("#app-view").classList.contains("hidden")) return;
+  if (location.hash === "#settings") showSettings();
+  else if (location.hash === "#rooms") showRooms(false);
+});
 $("#close-history").addEventListener("click", () => $("#history-dialog").close());
 $("#history-content").addEventListener("click", async (event) => {
   const range = event.target.closest("[data-history-days]");
@@ -940,5 +946,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=13").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=14").then((registration) => registration.update()).catch(() => {});
 }
