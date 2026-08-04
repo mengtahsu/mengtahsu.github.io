@@ -4,6 +4,14 @@ const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
 const roomGrid = $("#room-grid");
+const settingsPages = {
+  household: { eyebrow: "住處設定", title: "家與位置", copy: "管理多個家，以及目前這個家的室外天氣位置。" },
+  rooms: { eyebrow: "空間與設備", title: "房間與遙控器", copy: "選擇首頁房間、增減遙控器，並設定每天的開關機時間。" },
+  comfort: { eyebrow: "個人化", title: "舒適學習與睡眠", copy: "查看 MyAmbi 從季節、時段、感覺與睡眠資料中學到的偏好。" },
+  members: { eyebrow: "共享管理", title: "家庭成員", copy: "邀請家人加入目前的家，或管理既有成員。" },
+  system: { eyebrow: "自動巡檢", title: "系統健康", copy: "查看控制器、Sensibo、命令佇列和資料同步是否正常。" },
+  platform: { eyebrow: "平台管理員", title: "平台管理", copy: "管理整個 MyAmbi 服務的使用者帳號。" },
+};
 
 function hideBoot() {
   $("#boot-view").classList.add("hidden");
@@ -103,7 +111,7 @@ async function boot() {
     renderHouseholds();
     applyRole();
     await loadRooms();
-    if (location.hash === "#settings") await showSettings();
+    if (location.hash.startsWith("#settings")) await showSettings();
     else showRooms(false);
     clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(loadRooms, 15000);
@@ -658,13 +666,37 @@ function showRooms(updateHash = true) {
   loadRooms();
 }
 
-async function showSettings() {
+function settingsPageFromHash() {
+  const key = location.hash.startsWith("#settings/") ? location.hash.slice("#settings/".length) : "";
+  return Object.hasOwn(settingsPages, key) ? key : "";
+}
+
+function selectSettingsPage(page = "") {
+  const selected = settingsPages[page] ? page : "";
+  $("#settings-index").classList.toggle("hidden", Boolean(selected));
+  $("#settings-detail").classList.toggle("hidden", !selected);
+  $("#settings-grid").dataset.page = selected;
+  if (selected) {
+    const content = settingsPages[selected];
+    $("#settings-detail-eyebrow").textContent = content.eyebrow;
+    $("#settings-detail-title").textContent = content.title;
+    $("#settings-detail-copy").textContent = content.copy;
+  }
+  history.replaceState({}, document.title, `${location.pathname}${selected ? `#settings/${selected}` : "#settings"}`);
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+async function showSettings(page = settingsPageFromHash()) {
+  const selected = typeof page === "string" ? (settingsPages[page] ? page : "") : settingsPageFromHash();
   $("#history-dialog").open && $("#history-dialog").close();
   $("#rooms-view").classList.add("hidden");
   $("#settings-view").classList.remove("hidden");
   updateNavigation("settings");
-  history.replaceState({}, document.title, `${location.pathname}#settings`);
-  try { await loadSettings(); }
+  selectSettingsPage(selected);
+  try {
+    await loadSettings();
+    if (selected === "platform" && $("#platform-admin-panel").classList.contains("hidden")) selectSettingsPage();
+  }
   catch (error) { showToast(`設定讀取失敗：${error.message}`, true); }
 }
 
@@ -701,10 +733,12 @@ async function loadSettings() {
     const platform = await cloud.function("platform-users", {}, "GET");
     state.platformUsers = platform.users ?? [];
     $("#platform-admin-panel").classList.remove("hidden");
+    $("#platform-settings-link").classList.remove("hidden");
     renderPlatformUsers();
   } catch (_) {
     state.platformUsers = [];
     $("#platform-admin-panel").classList.add("hidden");
+    $("#platform-settings-link").classList.add("hidden");
   }
 }
 
@@ -1318,15 +1352,16 @@ $("#notification-button").addEventListener("click", async (event) => {
   }
 });
 
-$("#settings-button").addEventListener("click", showSettings);
-$("#settings-nav").addEventListener("click", showSettings);
+$("#settings-button").addEventListener("click", (event) => { event.preventDefault(); showSettings(""); });
+$("#settings-nav").addEventListener("click", (event) => { event.preventDefault(); showSettings(""); });
 $("#rooms-nav").addEventListener("click", () => showRooms());
 $("#brand-home").addEventListener("click", () => showRooms());
-$("#open-settings-empty").addEventListener("click", showSettings);
+$("#open-settings-empty").addEventListener("click", () => showSettings("rooms"));
 $("#back-button").addEventListener("click", () => showRooms());
+$("#settings-index-button").addEventListener("click", () => showSettings(""));
 window.addEventListener("hashchange", () => {
   if ($("#app-view").classList.contains("hidden")) return;
-  if (location.hash === "#settings") showSettings();
+  if (location.hash.startsWith("#settings")) showSettings(settingsPageFromHash());
   else if (location.hash === "#rooms") showRooms(false);
 });
 $("#close-history").addEventListener("click", () => $("#history-dialog").close());
@@ -1370,5 +1405,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=33").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=34").then((registration) => registration.update()).catch(() => {});
 }
