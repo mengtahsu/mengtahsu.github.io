@@ -79,8 +79,9 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .target-value { font-weight: 900; min-width: 54px; text-align: center; }
 .round { border: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: white; font-size: 1.15rem; }
 .feeling-label { color: var(--muted); font-size: .76rem; font-weight: 700; margin: auto 0 9px; }
-.feelings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.feeling { border: 1px solid var(--line); background: rgba(255,255,255,.7); padding: 9px 4px; border-radius: 12px; font-size: .78rem; font-weight: 750; color: var(--ink); }
+.feelings { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.feeling { border: 1px solid var(--line); background: rgba(255,255,255,.7); padding: 8px 2px; border-radius: 12px; font-size: .68rem; font-weight: 750; color: var(--ink); line-height: 1.2; }
+.feeling span { display: block; font-size: 1rem; margin-bottom: 3px; }
 .feeling:hover { transform: translateY(-1px); border-color: rgba(39,104,79,.4); }
 .room-actions { display: flex; gap: 7px; margin-top: 8px; }
 .room-action { flex: 1; border: 0; background: transparent; color: var(--blue); font-size: .78rem; padding: 8px 4px; font-weight: 750; }
@@ -122,10 +123,11 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .schedule-toggle { display: flex; align-items: center; gap: 6px; align-self: center; }
 .schedule-toggle input { width: auto; }
 .learning-list, .alerts-list { display: grid; gap: 10px; margin-top: 20px; }
-.learning-room { display: grid; grid-template-columns: minmax(180px,1fr) auto auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
+.learning-room { display: grid; grid-template-columns: minmax(180px,1fr) auto auto auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .learning-room > div:first-child { display: grid; gap: 3px; }
 .learning-room span, .learning-room .confidence { color: var(--muted); font-size: .76rem; }
 .learned-temperature { font-size: 1.5rem; font-weight: 300; letter-spacing: -.05em; }
+.learned-temperature small { display: block; color: var(--muted); font-size: .65rem; font-weight: 750; letter-spacing: 0; margin-bottom: 2px; }
 .confidence { border-radius: 999px; padding: 6px 9px; background: #ece9e4; }
 .confidence.medium { color: var(--blue); background: var(--blue-soft); }
 .confidence.high { color: var(--green); background: var(--green-soft); }
@@ -173,5 +175,6 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .panel-title-row { display: grid; }
   .panel-title-row .secondary { justify-self: start; }
   .learning-room { grid-template-columns: 1fr auto; }
+  .learning-room > div:first-child { grid-column: 1/-1; }
   .learning-room .confidence { grid-column: 1/-1; justify-self: start; }
 }

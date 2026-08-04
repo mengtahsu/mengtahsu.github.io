@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], refreshTimer: null };
+const state = { status: null, user: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -160,9 +160,11 @@ function roomCard(room) {
     </div>
     <p class="feeling-label">你現在感覺如何？</p>
     <div class="feelings">
-      <button class="feeling" data-feeling="-1">🥶 太冷</button>
-      <button class="feeling" data-feeling="0">😌 剛好</button>
-      <button class="feeling" data-feeling="1">🥵 太熱</button>
+      <button class="feeling" data-feeling="-2"><span>🥶</span>非常冷</button>
+      <button class="feeling" data-feeling="-1"><span>😣</span>太冷</button>
+      <button class="feeling" data-feeling="0"><span>😌</span>剛好</button>
+      <button class="feeling" data-feeling="1"><span>😓</span>太熱</button>
+      <button class="feeling" data-feeling="2"><span>🥵</span>非常熱</button>
     </div>
     <div class="room-actions">
       <button class="room-action workout" ${isOn ? "" : "disabled"}>運動後降溫 30 分</button>
@@ -229,13 +231,18 @@ roomGrid.addEventListener("click", async (event) => {
 async function showHistory(room) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
   const [feedback, decisions] = await Promise.all([
-    cloud.rest("comfort_feedback", `select=id,recorded_at,feeling&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
+    cloud.rest("comfort_feedback", `select=id,recorded_at,local_date,season,feeling&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
     cloud.rest("control_decisions", `select=id,decided_at,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
   ]);
   $("#history-title").textContent = room.name;
-  const feelings = { "-2": "很冷", "-1": "太冷", "0": "剛好", "1": "太熱", "2": "很熱" };
+  const feelings = { "-2": "非常冷", "-1": "太冷", "0": "剛好", "1": "太熱", "2": "非常熱" };
+  const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
   const events = [
-    ...feedback.map((item) => ({ at: item.recorded_at, title: `回報「${feelings[item.feeling]}」`, detail: "已加入個人舒適學習" })),
+    ...feedback.map((item) => ({
+      at: item.recorded_at,
+      title: `回報「${feelings[item.feeling]}」`,
+      detail: `${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 已加入個人舒適學習`,
+    })),
     ...decisions.map((item) => ({
       at: item.decided_at,
       title: item.sent
@@ -279,6 +286,7 @@ async function loadSettings() {
   ]);
   state.roomChoices = choices.rooms;
   state.learning = insights.rooms;
+  state.learningContext = insights;
   renderPersonalRoomChoices();
   renderLearning();
   renderAlerts();
@@ -294,6 +302,11 @@ async function loadSettings() {
 
 function renderLearning() {
   const list = $("#learning-list");
+  const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
+  if (state.learningContext?.current_date) {
+    $("#learning-context").textContent =
+      `現在是 ${state.learningContext.current_date} · ${seasons[state.learningContext.current_season] || "季節未定"}。MyAmbi 會優先參考相近時段與相近季節的紀錄。`;
+  }
   const confidence = { low: "資料不足", medium: "開始穩定", high: "可信度高" };
   const rows = [];
   for (const room of state.learning ?? []) {
@@ -316,7 +329,8 @@ function renderLearning() {
         : `冷熱回報平衡`;
       row.innerHTML = `
         <div><strong></strong><span>${bucket.label} · ${direction}</span></div>
-        <div class="learned-temperature">${Number(bucket.learned_target).toFixed(1)}°</div>
+        <div class="learned-temperature"><small>舒適室溫</small>${bucket.comfort_room_temperature == null ? "—" : `${Number(bucket.comfort_room_temperature).toFixed(1)}°`}</div>
+        <div class="learned-temperature"><small>建議冷氣</small>${Number(bucket.recommended_setpoint).toFixed(1)}°</div>
         <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
       `;
       row.querySelector("strong").textContent = room.name;
