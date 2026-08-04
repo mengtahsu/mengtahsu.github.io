@@ -5,6 +5,7 @@ class MyAmbiCloud {
     this.storageKey = "myambi.supabase.session";
     this.deviceKey = "myambi.trusted.device";
     this.loggedOutKey = "myambi.logged.out";
+    this.passwordResetKey = "myambi.password.reset.active";
     this.householdKey = "myambi.active.household";
     this.callbackType = null;
     this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
@@ -20,6 +21,7 @@ class MyAmbiCloud {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (!params.get("access_token")) return null;
     this.callbackType = params.get("type") || null;
+    if (this.callbackType === "recovery") localStorage.setItem(this.passwordResetKey, "1");
     const session = {
       access_token: params.get("access_token"),
       refresh_token: params.get("refresh_token"),
@@ -118,8 +120,18 @@ class MyAmbiCloud {
     );
     this.saveSession(result);
     localStorage.removeItem(this.loggedOutKey);
+    this.clearPasswordReset();
     await this.registerTrustedDevice();
     return result;
+  }
+
+  passwordResetActive() {
+    return this.callbackType === "recovery" || localStorage.getItem(this.passwordResetKey) === "1";
+  }
+
+  clearPasswordReset() {
+    this.callbackType = null;
+    localStorage.removeItem(this.passwordResetKey);
   }
 
   async sendPasswordReset(email) {

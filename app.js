@@ -80,7 +80,7 @@ async function boot() {
     }
     state.user = await cloud.user();
     if (!state.user) return showAuth("login");
-    if (cloud.callbackType === "recovery" || new URLSearchParams(location.search).get("password-reset") === "1") {
+    if (cloud.passwordResetActive() || new URLSearchParams(location.search).get("password-reset") === "1") {
       history.replaceState({}, document.title, location.pathname);
       return showAuth("password-reset");
     }
@@ -817,7 +817,7 @@ $("#password-reset-form").addEventListener("submit", async (event) => {
     if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
     await cloud.updatePassword(values.password);
     await cloud.registerTrustedDevice();
-    cloud.callbackType = null;
+    cloud.clearPasswordReset();
     history.replaceState({}, document.title, `${location.pathname}#rooms`);
     event.currentTarget.reset();
     showToast("密碼已設定，正在回到你的家");
@@ -933,5 +933,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=19").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=20").then((registration) => registration.update()).catch(() => {});
 }
