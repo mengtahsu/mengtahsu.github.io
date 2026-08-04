@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, refreshTimer: null };
+const state = { status: null, user: null, households: [], rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -31,6 +31,18 @@ function showAuth(mode) {
   appView.classList.add("hidden");
   $("#setup-form").classList.toggle("hidden", mode !== "setup");
   $("#login-form").classList.toggle("hidden", mode !== "login");
+  $("#pair-form").classList.toggle("hidden", mode !== "pair");
+  $("#handoff-created").classList.toggle("hidden", mode !== "handoff-created");
+  if (mode === "pair") {
+    const pending = cloud.pendingLogin();
+    if (!pending) return showAuth("login");
+    $("#pair-email").textContent = pending.email;
+    window.setTimeout(() => $("#pair-code").focus(), 50);
+  }
+}
+
+function isStandaloneApp() {
+  return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
 function displayName() {
@@ -47,6 +59,19 @@ function applyRole() {
   document.querySelectorAll(".member-copy").forEach((el) => el.classList.toggle("hidden", isAdmin()));
 }
 
+function renderHouseholds() {
+  const switcher = $("#household-switcher");
+  switcher.replaceChildren(...state.households.map((household) => {
+    const option = document.createElement("option");
+    option.value = household.id;
+    option.textContent = household.name;
+    option.selected = household.id === cloud.activeHouseholdId;
+    return option;
+  }));
+  const active = state.households.find((household) => household.id === cloud.activeHouseholdId);
+  $("#current-house-label").textContent = active ? `現在的家 · ${active.name}` : "現在的家";
+}
+
 async function boot() {
   try {
     if (!cloud.configured) {
@@ -61,24 +86,35 @@ async function boot() {
       return;
     }
     state.user = await cloud.user();
-    if (!state.user) return showAuth("login");
-    try {
-      state.status = await cloud.function("status", {}, "GET");
-    } catch (error) {
-      if (error.message.includes("尚未加入")) return showAuth("setup");
-      throw error;
+    if (!state.user) return showAuth(cloud.pendingLogin() ? "pair" : "login");
+    const handoffRequested = new URLSearchParams(location.search).get("handoff") === "1";
+    if (handoffRequested && !isStandaloneApp()) {
+      const handoff = await cloud.createHandoff();
+      $("#handoff-code").textContent = handoff.code;
+      $("#handoff-code").dataset.code = handoff.code;
+      history.replaceState({}, document.title, location.pathname);
+      return showAuth("handoff-created");
     }
+    const householdResult = await cloud.function("households", {}, "GET");
+    state.households = householdResult.households ?? [];
+    if (!state.households.length) return showAuth("setup");
+    const activeStillExists = state.households.some((item) => item.id === cloud.activeHouseholdId);
+    if (!activeStillExists) cloud.setActiveHousehold(state.households[0].id);
+    state.status = await cloud.function("status", {}, "GET");
     authView.classList.add("hidden");
     appView.classList.remove("hidden");
     hideBoot();
     $("#user-name").textContent = displayName();
+    renderHouseholds();
     applyRole();
     await loadRooms();
+    if (location.hash === "#settings") await showSettings();
+    else showRooms(false);
     clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(loadRooms, 15000);
   } catch (error) {
     showAuth("login");
-    $("#auth-error").textContent = `登入沒有完成：${error.message}。請重新整理或重新寄登入連結。`;
+    $("#auth-error").textContent = `登入沒有完成：${error.message}。請重新整理或重新寄登入信。`;
     $("#auth-error").classList.remove("hidden");
     showToast(error.message, true);
   }
@@ -94,8 +130,9 @@ function greeting() {
 
 async function loadRooms() {
   try {
+    if (!cloud.activeHouseholdId) return;
     const [rooms, status, queue] = await Promise.all([
-      cloud.rest("room_dashboard", "select=*&order=name.asc"),
+      cloud.rest("room_dashboard", `select=*&household_id=eq.${cloud.activeHouseholdId}&order=name.asc`),
       cloud.function("status", {}, "GET"),
       cloud.rest("ac_command_queue", "select=id,room_id,status&status=in.(pending,processing)&order=id.asc"),
     ]);
@@ -166,11 +203,11 @@ function roomCard(room) {
     </div>
     <p class="feeling-label">你現在感覺如何？</p>
     <div class="feelings">
-      <button class="feeling" data-feeling="-2"><span>🥶</span>非常冷</button>
-      <button class="feeling" data-feeling="-1"><span>😣</span>太冷</button>
+      <button class="feeling" data-feeling="-2"><span>🥶</span>太冷</button>
+      <button class="feeling" data-feeling="-1"><span>😣</span>有點冷</button>
       <button class="feeling" data-feeling="0"><span>😌</span>剛好</button>
-      <button class="feeling" data-feeling="1"><span>😓</span>太熱</button>
-      <button class="feeling" data-feeling="2"><span>🥵</span>非常熱</button>
+      <button class="feeling" data-feeling="1"><span>😓</span>有點熱</button>
+      <button class="feeling" data-feeling="2"><span>🥵</span>太熱</button>
     </div>
     <div class="room-actions">
       <button class="room-action workout" ${isOn ? "" : "disabled"}>運動後降溫 30 分</button>
@@ -236,7 +273,7 @@ async function showHistory(room) {
     : [];
   const profileNames = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
   $("#history-title").textContent = room.name;
-  const feelings = { "-2": "非常冷", "-1": "太冷", "0": "剛好", "1": "太熱", "2": "非常熱" };
+  const feelings = { "-2": "太冷", "-1": "有點冷", "0": "剛好", "1": "有點熱", "2": "太熱" };
   const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
   const events = [
     ...feedback.map((item) => ({
@@ -392,10 +429,28 @@ function climateChart(rawReadings) {
   return section;
 }
 
+function updateNavigation(view) {
+  $("#rooms-nav").classList.toggle("active", view === "rooms");
+  $("#settings-nav").classList.toggle("active", view === "settings");
+}
+
+function showRooms(updateHash = true) {
+  $("#history-dialog").open && $("#history-dialog").close();
+  $("#settings-view").classList.add("hidden");
+  $("#rooms-view").classList.remove("hidden");
+  updateNavigation("rooms");
+  if (updateHash) history.replaceState({}, document.title, `${location.pathname}#rooms`);
+  loadRooms();
+}
+
 async function showSettings() {
+  $("#history-dialog").open && $("#history-dialog").close();
   $("#rooms-view").classList.add("hidden");
   $("#settings-view").classList.remove("hidden");
-  await loadSettings();
+  updateNavigation("settings");
+  history.replaceState({}, document.title, `${location.pathname}#settings`);
+  try { await loadSettings(); }
+  catch (error) { showToast(`設定讀取失敗：${error.message}`, true); }
 }
 
 async function loadSettings() {
@@ -434,7 +489,7 @@ function renderLearning() {
     if (!useful.length) {
       const empty = document.createElement("div");
       empty.className = "learning-room";
-      empty.innerHTML = `<div><strong></strong><span>還沒有回報；使用房間卡片的太冷、剛好、太熱即可開始學習。</span></div>`;
+      empty.innerHTML = `<div><strong></strong><span>還沒有回報；使用房間卡片的有點冷、剛好、有點熱即可開始學習。</span></div>`;
       empty.querySelector("strong").textContent = room.name;
       rows.push(empty);
       continue;
@@ -638,23 +693,92 @@ $("#setup-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
   try {
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    await cloud.function("bootstrap", values);
+    const created = await cloud.function("bootstrap", values);
+    cloud.setActiveHousehold(created.household_id);
     await boot();
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
+});
+
+$("#new-household-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  try {
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const created = await cloud.function("bootstrap", {
+      household_name: values.household_name,
+      display_name: displayName(),
+    });
+    cloud.setActiveHousehold(created.household_id);
+    event.currentTarget.reset();
+    await boot();
+    showToast("新的家已建立");
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#household-switcher").addEventListener("change", async (event) => {
+  cloud.setActiveHousehold(event.currentTarget.value);
+  clearInterval(state.refreshTimer);
+  await boot();
+  showToast("已切換目前的家");
 });
 
 $("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
   try {
     $("#auth-error").classList.add("hidden");
-    $("#link-sent").classList.add("hidden");
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    await cloud.sendMagicLink(values.email, values.display_name);
-    $("#link-sent").classList.remove("hidden");
+    await cloud.sendMagicLink(values.email);
+    showAuth("pair");
+    showToast("一次性登入信已寄出");
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
+
+$("#pair-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  try {
+    $("#pair-error").classList.add("hidden");
+    const pending = cloud.pendingLogin();
+    if (!pending) throw new Error("登入流程已過期，請重新寄送");
+    const code = new FormData(event.currentTarget).get("code");
+    await cloud.claimHandoff(code);
+    event.currentTarget.reset();
+    await boot();
+  } catch (error) {
+    $("#pair-error").textContent = `無法登入：${error.message}`;
+    $("#pair-error").classList.remove("hidden");
+  } finally { setBusy(button, false); }
+});
+
+$("#resend-link").addEventListener("click", async (event) => {
+  const pending = cloud.pendingLogin();
+  if (!pending) return showAuth("login");
+  setBusy(event.currentTarget, true);
+  try {
+    await cloud.sendMagicLink(pending.email);
+    showToast("新的登入信已寄出");
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(event.currentTarget, false); }
+});
+
+$("#change-email").addEventListener("click", () => {
+  localStorage.removeItem(cloud.pendingLoginKey);
+  showAuth("login");
+});
+
+$("#copy-handoff").addEventListener("click", async () => {
+  const code = $("#handoff-code").dataset.code;
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code);
+    showToast("配對碼已複製，請切回主畫面版 MyAmbi");
+  } catch (_) {
+    showToast("請長按上方配對碼複製", true);
+  }
+});
+
+$("#handoff-code").addEventListener("click", () => $("#copy-handoff").click());
 
 $("#member-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
@@ -705,10 +829,16 @@ $("#notification-button").addEventListener("click", async (event) => {
 });
 
 $("#settings-button").addEventListener("click", showSettings);
+$("#settings-nav").addEventListener("click", showSettings);
+$("#rooms-nav").addEventListener("click", () => showRooms());
 $("#open-settings-empty").addEventListener("click", showSettings);
-$("#back-button").addEventListener("click", () => { $("#settings-view").classList.add("hidden"); $("#rooms-view").classList.remove("hidden"); loadRooms(); });
+$("#back-button").addEventListener("click", () => showRooms());
 $("#close-history").addEventListener("click", () => $("#history-dialog").close());
-$("#logout-button").addEventListener("click", async () => { await cloud.signOut(); location.reload(); });
+$("#logout-button").addEventListener("click", async () => {
+  await cloud.signOut();
+  localStorage.removeItem(cloud.pendingLoginKey);
+  location.reload();
+});
 
 boot();
 

@@ -3,6 +3,9 @@ class MyAmbiCloud {
     this.url = String(config?.supabaseUrl || "").replace(/\/$/, "");
     this.key = String(config?.publishableKey || "");
     this.storageKey = "myambi.supabase.session";
+    this.pendingLoginKey = "myambi.pending.login";
+    this.householdKey = "myambi.active.household";
+    this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
     this.callbackError = this.readCallbackError();
     this.session = this.readSessionFromURL() || this.readSession();
   }
@@ -40,8 +43,9 @@ class MyAmbiCloud {
   }
 
   saveSession(session) {
-    this.session = session;
-    localStorage.setItem(this.storageKey, JSON.stringify(session));
+    const expiresAt = session?.expires_at || Math.floor(Date.now() / 1000) + Number(session?.expires_in || 3600);
+    this.session = { ...session, expires_at: expiresAt };
+    localStorage.setItem(this.storageKey, JSON.stringify(this.session));
   }
 
   clearSession() {
@@ -49,10 +53,31 @@ class MyAmbiCloud {
     localStorage.removeItem(this.storageKey);
   }
 
+  pendingLogin() {
+    try {
+      const pending = JSON.parse(localStorage.getItem(this.pendingLoginKey) || "null");
+      if (!pending?.email || Date.now() - Number(pending.sent_at || 0) > 60 * 60 * 1000) {
+        localStorage.removeItem(this.pendingLoginKey);
+        return null;
+      }
+      return pending;
+    } catch (_) {
+      localStorage.removeItem(this.pendingLoginKey);
+      return null;
+    }
+  }
+
   baseHeaders(authenticated = true) {
     const headers = { apikey: this.key, Accept: "application/json" };
     if (authenticated && this.session?.access_token) headers.Authorization = `Bearer ${this.session.access_token}`;
+    if (authenticated && this.activeHouseholdId) headers["x-myambi-household-id"] = this.activeHouseholdId;
     return headers;
+  }
+
+  setActiveHousehold(householdId) {
+    this.activeHouseholdId = householdId || null;
+    if (this.activeHouseholdId) localStorage.setItem(this.householdKey, this.activeHouseholdId);
+    else localStorage.removeItem(this.householdKey);
   }
 
   async request(url, options = {}, authenticated = true) {
@@ -90,13 +115,37 @@ class MyAmbiCloud {
     this.saveSession({ ...refreshed, expires_at: Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600) });
   }
 
-  async sendMagicLink(email, displayName = "") {
-    const redirect = `${location.origin}${location.pathname}`;
-    return this.request(
+  async sendMagicLink(email) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const redirect = `${location.origin}${location.pathname}?handoff=1`;
+    const result = await this.request(
       `${this.url}/auth/v1/otp?redirect_to=${encodeURIComponent(redirect)}`,
-      { method: "POST", body: JSON.stringify({ email, create_user: true, data: { display_name: displayName } }) },
+      { method: "POST", body: JSON.stringify({ email: normalizedEmail, create_user: true }) },
       false,
     );
+    localStorage.setItem(this.pendingLoginKey, JSON.stringify({ email: normalizedEmail, sent_at: Date.now() }));
+    return result;
+  }
+
+  async createHandoff() {
+    return this.request(`${this.url}/functions/v1/auth-handoff`, {
+      method: "POST",
+      body: JSON.stringify({ action: "create" }),
+    });
+  }
+
+  async claimHandoff(code) {
+    const result = await this.request(
+      `${this.url}/functions/v1/auth-handoff`,
+      { method: "POST", body: JSON.stringify({ action: "claim", code }) },
+      false,
+    );
+    if (!result.session?.access_token || !result.session?.refresh_token) {
+      throw new Error("配對完成，但沒有取得登入狀態");
+    }
+    this.saveSession(result.session);
+    localStorage.removeItem(this.pendingLoginKey);
+    return result.session;
   }
 
   async user() {

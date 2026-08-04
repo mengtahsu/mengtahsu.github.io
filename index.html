@@ -39,13 +39,34 @@
 
       <form id="login-form" class="panel hidden">
         <h2>登入 MyAmbi</h2>
-        <p>我們會寄一個安全登入連結，不需要記密碼。</p>
+        <p>第一次在這台 iPhone 登入時，我們會寄安全連結。Safari 會顯示一組一次性裝置配對碼；貼回主畫面版 MyAmbi 後，之後會自動保持登入。</p>
         <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
-        <label>你的名稱（第一次使用）<input name="display_name" autocomplete="name" maxlength="80" placeholder="例如：孟達"></label>
-        <button class="primary" type="submit">寄登入連結</button>
+        <button class="primary" type="submit">寄一次性登入信</button>
         <p id="auth-error" class="error-note hidden"></p>
-        <p id="link-sent" class="success-note hidden">登入信已寄出，請到信箱點擊連結。</p>
       </form>
+
+      <form id="pair-form" class="panel hidden">
+        <p class="eyebrow">只需配對這台裝置一次</p>
+        <h2>輸入裝置配對碼</h2>
+        <p>登入信已寄到 <strong id="pair-email"></strong>。點信中的連結後，Safari 會顯示配對碼；複製後回到這裡貼上。</p>
+        <label>裝置配對碼
+          <input id="pair-code" name="code" class="otp-input" inputmode="text" autocomplete="one-time-code" maxlength="14" required placeholder="ABCD-EFGH-JKLM">
+        </label>
+        <button class="primary" type="submit">配對並登入</button>
+        <div class="auth-links">
+          <button id="resend-link" class="text-button" type="button">重新寄登入信</button>
+          <button id="change-email" class="text-button" type="button">更換 Email</button>
+        </div>
+        <p id="pair-error" class="error-note hidden"></p>
+      </form>
+
+      <section id="handoff-created" class="panel hidden">
+        <p class="eyebrow">Safari 已確認是你</p>
+        <h2>把登入帶回主畫面</h2>
+        <p>複製這組一次性配對碼，切回主畫面版 MyAmbi 貼上。十分鐘後失效，而且只能使用一次。</p>
+        <button id="handoff-code" class="handoff-code" type="button" aria-label="複製裝置配對碼"></button>
+        <button id="copy-handoff" class="primary" type="button">複製配對碼</button>
+      </section>
     </section>
 
     <section id="app-view" class="hidden">
@@ -55,6 +76,7 @@
           <span>MyAmbi</span>
         </a>
         <div class="top-actions">
+          <select id="household-switcher" class="household-switcher" aria-label="切換家"></select>
           <span id="user-name" class="user-chip"></span>
           <button id="settings-button" class="icon-button" aria-label="設定">⚙︎</button>
           <button id="logout-button" class="text-button">登出</button>
@@ -64,7 +86,7 @@
       <section id="rooms-view">
         <div class="hero-row">
           <div>
-            <p class="eyebrow">現在的家</p>
+            <p id="current-house-label" class="eyebrow">現在的家</p>
             <h1 id="greeting">晚安</h1>
             <p id="summary" class="lead compact">正在讀取每個房間…</p>
           </div>
@@ -89,6 +111,15 @@
         </div>
 
         <div class="settings-grid">
+          <section class="panel wide">
+            <span class="step">一個帳號可有多個家</span>
+            <h2>我的家</h2>
+            <p>你可以切換目前管理的家，也可以建立另一個家。家人透過邀請加入後，仍可在自己的帳號另外建立其他住處。</p>
+            <form id="new-household-form" class="inline-household-form">
+              <label>新家的名稱<input name="household_name" maxlength="80" required placeholder="例如：台北住處"></label>
+              <button class="secondary" type="submit">建立另一個家</button>
+            </form>
+          </section>
           <section class="panel wide">
             <span class="step">近 30 天</span>
             <h2>我的舒適度學習報告</h2>
@@ -156,6 +187,11 @@
           </section>
         </div>
       </section>
+
+      <nav class="app-nav" aria-label="主要導覽">
+        <button id="rooms-nav" class="app-nav-item active" type="button"><span>⌂</span>房間</button>
+        <button id="settings-nav" class="app-nav-item" type="button"><span>⚙︎</span>設定</button>
+      </nav>
     </section>
   </main>
 
