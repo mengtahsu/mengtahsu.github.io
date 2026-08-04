@@ -33,6 +33,9 @@ function showAuth(mode) {
   $("#login-form").classList.toggle("hidden", mode !== "login");
   $("#pair-form").classList.toggle("hidden", mode !== "pair");
   $("#handoff-created").classList.toggle("hidden", mode !== "handoff-created");
+  const trusted = mode === "login" && cloud.hasTrustedDevice();
+  $("#trusted-device-login").classList.toggle("hidden", !trusted);
+  $("#trusted-device-copy").classList.toggle("hidden", !trusted);
   if (mode === "pair") {
     const pending = cloud.pendingLogin();
     $("#pair-copy").textContent = pending
@@ -839,6 +842,15 @@ $("#change-email").addEventListener("click", () => {
 
 $("#use-pair-code").addEventListener("click", () => showAuth("pair"));
 
+$("#trusted-device-login").addEventListener("click", async (event) => {
+  setBusy(event.currentTarget, true);
+  try {
+    await cloud.restoreDevice();
+    await boot();
+  } catch (error) { showToast(`無法登入：${error.message}`, true); }
+  finally { setBusy(event.currentTarget, false); }
+});
+
 $("#copy-handoff").addEventListener("click", async () => {
   const code = $("#handoff-code").dataset.code;
   if (!code) return;
@@ -946,5 +958,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=14").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=15").then((registration) => registration.update()).catch(() => {});
 }

@@ -3,6 +3,8 @@ class MyAmbiCloud {
     this.url = String(config?.supabaseUrl || "").replace(/\/$/, "");
     this.key = String(config?.publishableKey || "");
     this.storageKey = "myambi.supabase.session";
+    this.deviceKey = "myambi.trusted.device";
+    this.loggedOutKey = "myambi.logged.out";
     this.pendingLoginKey = "myambi.pending.login";
     this.householdKey = "myambi.active.household";
     this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
@@ -144,11 +146,37 @@ class MyAmbiCloud {
       throw new Error("配對完成，但沒有取得登入狀態");
     }
     this.saveSession(result.session);
+    if (result.device_token) localStorage.setItem(this.deviceKey, result.device_token);
+    localStorage.removeItem(this.loggedOutKey);
     localStorage.removeItem(this.pendingLoginKey);
     return result.session;
   }
 
+  hasTrustedDevice() {
+    return Boolean(localStorage.getItem(this.deviceKey));
+  }
+
+  async restoreDevice() {
+    const deviceToken = localStorage.getItem(this.deviceKey);
+    if (!deviceToken) throw new Error("這台裝置尚未配對");
+    const result = await this.request(
+      `${this.url}/functions/v1/auth-handoff`,
+      { method: "POST", body: JSON.stringify({ action: "restore", device_token: deviceToken }) },
+      false,
+    );
+    if (!result.session?.access_token || !result.session?.refresh_token) {
+      throw new Error("無法恢復登入狀態");
+    }
+    this.saveSession(result.session);
+    localStorage.removeItem(this.loggedOutKey);
+    return result.session;
+  }
+
   async user() {
+    if (!this.session && this.hasTrustedDevice() && !localStorage.getItem(this.loggedOutKey)) {
+      try { await this.restoreDevice(); }
+      catch (_) { localStorage.removeItem(this.deviceKey); }
+    }
     if (!this.session) return null;
     try { return await this.request(`${this.url}/auth/v1/user`); }
     catch (error) {
@@ -163,6 +191,7 @@ class MyAmbiCloud {
       await fetch(`${this.url}/auth/v1/logout`, { method: "POST", headers: this.baseHeaders() }).catch(() => {});
     }
     this.clearSession();
+    if (this.hasTrustedDevice()) localStorage.setItem(this.loggedOutKey, "1");
   }
 
   function(action, body = {}, method = "POST") {

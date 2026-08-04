@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=14">
+  <link rel="stylesheet" href="/styles.css?v=15">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -39,6 +39,8 @@
 
       <form id="login-form" class="panel hidden">
         <h2>登入 MyAmbi</h2>
+        <button id="trusted-device-login" class="primary hidden" type="button">登入原本帳號</button>
+        <p id="trusted-device-copy" class="trusted-device-copy hidden">這台 iPhone 已配對，不必再收 Email。</p>
         <p>第一次在這台 iPhone 登入時，我們會寄安全連結。Safari 會顯示一組一次性裝置配對碼；貼回主畫面版 MyAmbi 後，之後會自動保持登入。</p>
         <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
         <button class="primary" type="submit">寄一次性登入信</button>
@@ -205,8 +207,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=14"></script>
-  <script src="/cloud-client.js?v=14"></script>
-  <script src="/app.js?v=14" defer></script>
+  <script src="/config.js?v=15"></script>
+  <script src="/cloud-client.js?v=15"></script>
+  <script src="/app.js?v=15" defer></script>
 </body>
 </html>
