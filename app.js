@@ -957,13 +957,30 @@ function renderRoomManagement() {
     const kind = document.createElement("span");
     kind.textContent = `${room.remotes?.length || 0} 台遙控器`;
     identity.append(name, kind);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "room-delete-button";
-    button.dataset.roomId = room.id;
-    button.dataset.roomName = room.name;
-    button.textContent = "刪除";
-    heading.append(identity, button);
+    const actions = document.createElement("div"); actions.className = "room-management-actions";
+    const rename = document.createElement("button"); rename.type = "button";
+    rename.className = "room-rename-button"; rename.dataset.roomName = room.name;
+    rename.textContent = "改名";
+    const removeRoom = document.createElement("button"); removeRoom.type = "button";
+    removeRoom.className = "room-delete-button";
+    removeRoom.dataset.roomId = room.id;
+    removeRoom.dataset.roomName = room.name;
+    removeRoom.textContent = "刪除";
+    actions.append(rename, removeRoom);
+    heading.append(identity, actions);
+    const renameForm = document.createElement("form");
+    renameForm.className = "room-rename-form hidden";
+    renameForm.dataset.roomId = room.id;
+    const renameLabel = document.createElement("label"); renameLabel.textContent = "房間新名稱";
+    const renameInput = document.createElement("input");
+    renameInput.name = "name"; renameInput.maxLength = 80; renameInput.required = true;
+    renameInput.value = room.name; renameInput.autocomplete = "off";
+    renameLabel.append(renameInput);
+    const saveRename = document.createElement("button"); saveRename.type = "submit";
+    saveRename.className = "primary"; saveRename.textContent = "儲存名稱";
+    const cancelRename = document.createElement("button"); cancelRename.type = "button";
+    cancelRename.className = "secondary cancel-room-rename"; cancelRename.textContent = "取消";
+    renameForm.append(renameLabel, saveRename, cancelRename);
     const remoteList = document.createElement("div"); remoteList.className = "remote-list";
     for (const remote of room.remotes ?? []) {
       const remoteRow = document.createElement("div"); remoteRow.className = "remote-row";
@@ -997,7 +1014,7 @@ function renderRoomManagement() {
       connect.className = "text-button show-sensibo-tools";
       connect.textContent = "新增真實 Sensibo"; controls.append(connect);
     }
-    row.append(heading, remoteList, controls);
+    row.append(heading, renameForm, remoteList, controls);
     return row;
   }));
 }
@@ -1191,6 +1208,20 @@ $("#new-room-form").addEventListener("submit", async (event) => {
 $("#room-management-list").addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button) return;
+  if (button.classList.contains("room-rename-button")) {
+    const form = button.closest(".room-management-row")?.querySelector(".room-rename-form");
+    if (!form) return;
+    form.classList.toggle("hidden");
+    if (!form.classList.contains("hidden")) {
+      const input = form.elements.name;
+      input.focus(); input.select();
+    }
+    return;
+  }
+  if (button.classList.contains("cancel-room-rename")) {
+    button.closest(".room-rename-form")?.classList.add("hidden");
+    return;
+  }
   if (button.classList.contains("add-demo-remote")) {
     setBusy(button, true);
     try {
@@ -1236,6 +1267,22 @@ $("#room-management-list").addEventListener("click", async (event) => {
     await loadSettings();
     await loadRooms();
     showToast(`已刪除 ${name}`);
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#room-management-list").addEventListener("submit", async (event) => {
+  const form = event.target.closest(".room-rename-form");
+  if (!form) return;
+  event.preventDefault();
+  const button = event.submitter;
+  const name = String(new FormData(form).get("name") || "").trim();
+  setBusy(button, true);
+  try {
+    await cloud.function("rename-room", { room_id: form.dataset.roomId, name });
+    await loadSettings();
+    await loadRooms();
+    showToast(`已改名為 ${name}，歷史與學習資料完整保留`);
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -1404,5 +1451,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=35").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=36").then((registration) => registration.update()).catch(() => {});
 }

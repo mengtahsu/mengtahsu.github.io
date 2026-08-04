@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=35">
+  <link rel="stylesheet" href="/styles.css?v=36">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -163,7 +163,7 @@
           <section class="panel wide admin-only" data-settings-page="rooms" data-settings-order="4">
             <span class="step">每個家各自管理</span>
             <h2>房間與遙控器</h2>
-            <p>先新增房間，再直接在該房間加入虛擬遙控器或 Sensibo。刪除房間會連同遙控器、歷史與學習資料一起刪除。</p>
+            <p>先新增房間，再直接在該房間加入虛擬遙控器或 Sensibo。改名會保留該房間全部歷史與學習資料；只有刪除才會一併移除。</p>
             <form id="new-room-form" class="new-room-form">
               <label>房間名稱<input name="name" maxlength="80" required placeholder="例如：書房"></label>
               <button class="primary" type="submit">新增房間</button>
@@ -247,8 +247,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=35"></script>
-  <script src="/cloud-client.js?v=35"></script>
-  <script src="/app.js?v=35" defer></script>
+  <script src="/config.js?v=36"></script>
+  <script src="/cloud-client.js?v=36"></script>
+  <script src="/app.js?v=36" defer></script>
 </body>
 </html>
