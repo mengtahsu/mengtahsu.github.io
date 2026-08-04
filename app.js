@@ -553,6 +553,9 @@ function renderSchedules() {
 }
 
 function renderLocations() {
+  const supported = state.allRooms.some((room) => Object.hasOwn(room, "location_label"));
+  $("#location-panel").classList.toggle("hidden", !supported);
+  if (!supported) return;
   const list = $("#locations-list");
   list.replaceChildren(...state.allRooms.map((room) => {
     const form = document.createElement("form");
