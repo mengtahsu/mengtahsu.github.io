@@ -360,7 +360,7 @@ function renderHistoryContent() {
   }
 }
 
-function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 42, rightWidth = 46 }) {
+function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 30, rightWidth = 34 }) {
   const frame = document.createElement("div");
   frame.className = "chart-frame";
   frame.style.setProperty("--chart-left-axis", `${leftWidth}px`);
@@ -464,7 +464,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   svg.setAttribute("viewBox", "0 0 760 300");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "室內、室外、冷氣設定、舒適目標溫度與濕度隨時間變化");
-  const margin = { left: 44, right: 44, top: 20, bottom: 34 };
+  const margin = { left: 10, right: 10, top: 20, bottom: 34 };
   const plotWidth = 760 - margin.left - margin.right;
   const plotHeight = 300 - margin.top - margin.bottom;
   const times = readings.map((row) => new Date(row.observed_at).getTime());
@@ -588,7 +588,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   section.className = "climate-chart air-quality-chart";
   const rangeLabel = days === 1 ? "24 小時" : `${days} 天`;
   const heading = document.createElement("div"); heading.className = "chart-heading";
-  heading.innerHTML = `<strong>Air Pro 空氣品質</strong><span>最近 ${rangeLabel} · CO₂為TVOC感測器推估值</span>`;
+  heading.innerHTML = `<strong>Air Pro 空氣品質</strong><span>最近 ${rangeLabel} · 左軸 TVOC（ppb），右軸 eCO₂（ppm，推估）</span>`;
   section.append(heading);
 
   const values = (key) => readings.map((row) => numericValue(row[key])).filter((value) => value !== null);
@@ -614,7 +614,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", "0 0 760 230"); svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Sensibo Air Pro TVOC與估算二氧化碳曲線");
-  const margin = { left: 58, right: 62, top: 20, bottom: 34 };
+  const margin = { left: 10, right: 10, top: 20, bottom: 34 };
   const plotWidth = 760 - margin.left - margin.right; const plotHeight = 230 - margin.top - margin.bottom;
   const times = readings.map((row) => new Date(row.observed_at).getTime());
   const start = Math.min(...times); const end = Math.max(...times); const span = Math.max(1, end - start);
@@ -639,8 +639,8 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   for (let index = 0; index <= 4; index += 1) {
     const y = margin.top + plotHeight * index / 4;
     line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
-    leftAxisLabels.push({ text: `${Math.round(tvocMax * (1 - index / 4))} ppb`, y });
-    rightAxisLabels.push({ text: `${Math.round(co2Max - (co2Max - co2Min) * index / 4)} ppm`, y });
+    leftAxisLabels.push({ text: `${Math.round(tvocMax * (1 - index / 4))}`, y });
+    rightAxisLabels.push({ text: `${Math.round(co2Max - (co2Max - co2Min) * index / 4)}`, y });
   }
   const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
   [0, 0.5, 1].forEach((position) => {
@@ -662,7 +662,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   svg.style.width = `${Math.round(760 * zoom)}px`; svg.style.maxWidth = "none";
   section.append(fixedAxisChart(svg, {
     height: 230, zoom, leftLabels: leftAxisLabels, rightLabels: rightAxisLabels,
-    leftWidth: 62, rightWidth: 66,
+    leftWidth: 30, rightWidth: 34,
   }));
   const legend = document.createElement("div"); legend.className = "chart-legend";
   [["tvoc", "TVOC（ppb）"], ["co2", "eCO₂估算（ppm）"]].forEach(([className, text]) => {
@@ -1485,5 +1485,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=38").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=39").then((registration) => registration.update()).catch(() => {});
 }
