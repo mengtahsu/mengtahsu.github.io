@@ -172,6 +172,7 @@ function roomCard(room) {
   const article = document.createElement("article");
   article.className = `room-card${room.override_ends_at ? " override" : ""}`;
   article.dataset.roomId = room.id;
+  const hasRemote = Boolean(room.primary_remote_id && room.remote_provider);
   const isOn = Boolean(room.is_on);
   const overrideTime = room.override_ends_at
     ? new Date(room.override_ends_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
@@ -194,13 +195,13 @@ function roomCard(room) {
       <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
       <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
     </div>
-    <p class="feeling-label">你現在感覺如何？</p>
-    <div class="feelings">
-      <button class="feeling" data-feeling="-2"><span>🥶</span>太冷</button>
-      <button class="feeling" data-feeling="-1"><span>😣</span>有點冷</button>
-      <button class="feeling" data-feeling="0"><span>😌</span>剛好</button>
-      <button class="feeling" data-feeling="1"><span>😓</span>有點熱</button>
-      <button class="feeling" data-feeling="2"><span>🥵</span>太熱</button>
+    <p class="feeling-label${hasRemote ? "" : " unavailable"}">${hasRemote ? "你現在感覺如何？" : "請先新增遙控器，才能回報冷熱"}</p>
+    <div class="feelings${hasRemote ? "" : " unavailable"}">
+      <button class="feeling" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
+      <button class="feeling" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
+      <button class="feeling" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
+      <button class="feeling" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
+      <button class="feeling" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
     </div>
     <div class="presence-row">
       <span>${presenceNames ? `目前在房：${presenceNames}` : "尚未確認誰在房"}</span>
@@ -1178,5 +1179,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=27").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=28").then((registration) => registration.update()).catch(() => {});
 }
