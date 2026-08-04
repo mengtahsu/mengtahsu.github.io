@@ -211,20 +211,20 @@ function roomCard(room) {
       <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
       <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
     </div>
-    <p class="feeling-label${hasRemote ? "" : " unavailable"}">${hasRemote ? "你現在感覺如何？" : "請先新增遙控器，才能回報冷熱"}</p>
+    <p class="feeling-label${hasRemote ? "" : " unavailable"}">${hasRemote ? "你現在需要什麼？" : "請先新增遙控器，才能回報冷熱"}</p>
     <div class="feelings${hasRemote ? "" : " unavailable"}">
-      <button class="feeling" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
-      <button class="feeling" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
-      <button class="feeling" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
-      <button class="feeling" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
-      <button class="feeling" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
+      <button class="comfort-action feeling" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
+      <button class="comfort-action feeling" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
+      <button class="comfort-action feeling" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
+      <button class="comfort-action feeling" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
+      <button class="comfort-action feeling" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
+      <button class="comfort-action workout" ${isOn ? "" : "disabled"}><span>🏃</span>運動後<small>降溫 30 分</small></button>
     </div>
     <div class="presence-row">
       <span>${presenceNames ? `目前在房：${presenceNames}` : "尚未確認誰在房"}</span>
       <button class="room-action ${mePresent ? "presence-leave" : "presence-arrive"}">${mePresent ? "我離開了" : "我在這裡"}</button>
     </div>
     <div class="room-actions">
-      <button class="room-action workout" ${isOn ? "" : "disabled"}>運動後降溫 30 分</button>
       <button class="room-action history">查看紀錄</button>
     </div>
     ${isAdmin() ? `<button class="room-action auto-toggle">${room.automation_enabled ? "暫停自動控制" : "啟用自動控制"}</button>` : ""}
@@ -238,16 +238,18 @@ function roomCard(room) {
 }
 
 roomGrid.addEventListener("click", async (event) => {
-  const card = event.target.closest(".room-card");
-  if (!card || !(event.target instanceof HTMLButtonElement)) return;
+  const target = event.target instanceof Element ? event.target : null;
+  const button = target?.closest("button");
+  const card = button?.closest(".room-card");
+  if (!card || !(button instanceof HTMLButtonElement)) return;
   const roomId = card.dataset.roomId;
   const room = state.rooms.find((item) => item.id === roomId);
   try {
-    setBusy(event.target, true);
-    if (event.target.matches(".feeling")) {
-      const result = await cloud.function("feedback", { room_id: roomId, feeling: Number(event.target.dataset.feeling) });
+    setBusy(button, true);
+    if (button.matches(".feeling")) {
+      const result = await cloud.function("feedback", { room_id: roomId, feeling: Number(button.dataset.feeling) });
       showToast(result.message);
-    } else if (event.target.matches(".workout")) {
+    } else if (button.matches(".workout")) {
       const result = await cloud.function("override", { room_id: roomId, minutes: 30, target_temperature: Math.max(23, Number(room.target_temperature || 27) - 2) });
       showToast(result.decision?.source === "off_guard"
         ? "冷氣已關機，未送出溫度指令"
@@ -256,28 +258,28 @@ roomGrid.addEventListener("click", async (event) => {
           ? "佇列自我檢查異常，這次降溫命令已丟棄"
           : "佇列已有 5 筆，這次降溫命令已丟棄"
         : "降溫命令已排入佇列，將依序送出");
-    } else if (event.target.matches(".cancel-override")) {
+    } else if (button.matches(".cancel-override")) {
       const result = await cloud.function("cancel-override", { room_id: roomId });
       showToast(result.decision?.dropped
         ? result.decision?.source === "queue_unhealthy"
           ? "已取消臨時模式；佇列檢查異常，恢復溫度命令未排入"
           : "已取消臨時模式；佇列已滿，恢復溫度命令未排入"
         : "已恢復 MyAmbi 自動控制");
-    } else if (event.target.matches(".history")) {
+    } else if (button.matches(".history")) {
       await showHistory(room);
-    } else if (event.target.matches(".presence-arrive, .presence-leave")) {
-      const present = event.target.matches(".presence-arrive");
+    } else if (button.matches(".presence-arrive, .presence-leave")) {
+      const present = button.matches(".presence-arrive");
       const result = await cloud.function("presence", { room_id: roomId, present });
       showToast(present
         ? `已登記在房；到 ${new Date(result.expires_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })} 前有效`
         : "已登記離開，後續不再以你的即時偏好為主");
-    } else if (event.target.matches(".auto-toggle")) {
+    } else if (button.matches(".auto-toggle")) {
       await cloud.function("automation", { room_id: roomId, enabled: !room.automation_enabled });
       showToast(room.automation_enabled ? "已暫停自動控制" : "已啟用自動控制");
     }
     await loadRooms();
   } catch (error) { showToast(error.message, true); }
-  finally { setBusy(event.target, false); }
+  finally { setBusy(button, false); }
 });
 
 async function showHistory(room, days = 1) {
@@ -1368,5 +1370,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=32").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=33").then((registration) => registration.update()).catch(() => {});
 }
