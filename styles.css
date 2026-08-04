@@ -116,17 +116,26 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .settings-menu-card small { color: var(--muted); font-size: .82rem; line-height: 1.45; }
 .settings-menu-card > b { color: var(--green); font-size: 1.8rem; font-weight: 400; }
 .settings-menu-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: var(--green-soft); color: var(--green); font-size: 1.45rem; font-weight: 850; }
+.settings-other-menu { margin-top: 34px; }
+.settings-other-menu > h2 { margin: 0 0 15px; font-size: 1.35rem; }
 .settings-detail-heading { margin-bottom: 24px; }
 .settings-detail-heading h1 { font-size: clamp(2.45rem,6vw,4.2rem); }
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
 .settings-grid .wide { grid-column: 1/-1; }
 .settings-grid > [data-settings-page] { display: none; }
+.settings-grid[data-page="home"] > [data-settings-page="household"],
+.settings-grid[data-page="home"] > [data-settings-page="rooms"],
 .settings-grid[data-page="household"] > [data-settings-page="household"],
 .settings-grid[data-page="rooms"] > [data-settings-page="rooms"],
 .settings-grid[data-page="comfort"] > [data-settings-page="comfort"],
 .settings-grid[data-page="members"] > [data-settings-page="members"],
 .settings-grid[data-page="system"] > [data-settings-page="system"],
 .settings-grid[data-page="platform"] > [data-settings-page="platform"] { display: block; }
+.settings-grid[data-page="home"] > [data-settings-order="1"] { order: 1; }
+.settings-grid[data-page="home"] > [data-settings-order="2"] { order: 2; }
+.settings-grid[data-page="home"] > [data-settings-order="3"] { order: 3; }
+.settings-grid[data-page="home"] > [data-settings-order="4"] { order: 4; }
+.settings-grid[data-page="home"] > [data-settings-order="5"] { order: 5; }
 .panel-title-row { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
 .panel-title-row p { margin-bottom: 0; }
 .panel-title-row .secondary { flex: none; }

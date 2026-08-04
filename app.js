@@ -5,8 +5,6 @@ const authView = $("#auth-view");
 const appView = $("#app-view");
 const roomGrid = $("#room-grid");
 const settingsPages = {
-  household: { eyebrow: "住處設定", title: "家與位置", copy: "管理多個家，以及目前這個家的室外天氣位置。" },
-  rooms: { eyebrow: "空間與設備", title: "房間與遙控器", copy: "選擇首頁房間、增減遙控器，並設定每天的開關機時間。" },
   comfort: { eyebrow: "個人化", title: "舒適學習與睡眠", copy: "查看 MyAmbi 從季節、時段、感覺與睡眠資料中學到的偏好。" },
   members: { eyebrow: "共享管理", title: "家庭成員", copy: "邀請家人加入目前的家，或管理既有成員。" },
   system: { eyebrow: "自動巡檢", title: "系統健康", copy: "查看控制器、Sensibo、命令佇列和資料同步是否正常。" },
@@ -675,7 +673,8 @@ function selectSettingsPage(page = "") {
   const selected = settingsPages[page] ? page : "";
   $("#settings-index").classList.toggle("hidden", Boolean(selected));
   $("#settings-detail").classList.toggle("hidden", !selected);
-  $("#settings-grid").dataset.page = selected;
+  $("#settings-other-menu").classList.toggle("hidden", Boolean(selected));
+  $("#settings-grid").dataset.page = selected || "home";
   if (selected) {
     const content = settingsPages[selected];
     $("#settings-detail-eyebrow").textContent = content.eyebrow;
@@ -1356,7 +1355,7 @@ $("#settings-button").addEventListener("click", (event) => { event.preventDefaul
 $("#settings-nav").addEventListener("click", (event) => { event.preventDefault(); showSettings(""); });
 $("#rooms-nav").addEventListener("click", () => showRooms());
 $("#brand-home").addEventListener("click", () => showRooms());
-$("#open-settings-empty").addEventListener("click", () => showSettings("rooms"));
+$("#open-settings-empty").addEventListener("click", () => showSettings(""));
 $("#back-button").addEventListener("click", () => showRooms());
 $("#settings-index-button").addEventListener("click", () => showSettings(""));
 window.addEventListener("hashchange", () => {
@@ -1405,5 +1404,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=34").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=35").then((registration) => registration.update()).catch(() => {});
 }
