@@ -312,7 +312,7 @@ function renderLearning() {
       rows.push(empty);
       continue;
     }
-    for (const bucket of useful) {
+    for (const [bucketIndex, bucket] of useful.entries()) {
       const row = document.createElement("div");
       row.className = "learning-room";
       const direction = bucket.cold > bucket.hot
@@ -320,8 +320,11 @@ function renderLearning() {
         : bucket.hot > bucket.cold
         ? `較常覺得熱（${bucket.hot} 次）`
         : `冷熱回報平衡`;
+      const coldTiming = bucketIndex === 0 && room.usual_cold_times?.length
+        ? ` · 常見覺冷時間 ${room.usual_cold_times.join("、")}`
+        : "";
       row.innerHTML = `
-        <div><strong></strong><span>${bucket.label} · ${direction} · 濕度體感修正 ${Number(bucket.humidity_correction) >= 0 ? "+" : ""}${Number(bucket.humidity_correction || 0).toFixed(1)}°</span></div>
+        <div><strong></strong><span>${bucket.label} · ${direction}${coldTiming} · 濕度體感修正 ${Number(bucket.humidity_correction) >= 0 ? "+" : ""}${Number(bucket.humidity_correction || 0).toFixed(1)}°</span></div>
         <div class="learned-temperature"><small>舒適室溫</small>${bucket.comfort_room_temperature == null ? "—" : `${Number(bucket.comfort_room_temperature).toFixed(1)}°`}</div>
         <div class="learned-temperature"><small>建議冷氣</small>${Number(bucket.recommended_setpoint).toFixed(1)}°</div>
         <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
