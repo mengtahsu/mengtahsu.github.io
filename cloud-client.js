@@ -21,7 +21,9 @@ class MyAmbiCloud {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (!params.get("access_token")) return null;
     this.callbackType = params.get("type") || null;
-    if (this.callbackType === "recovery") localStorage.setItem(this.passwordResetKey, "1");
+    if (["recovery", "invite"].includes(this.callbackType)) {
+      localStorage.setItem(this.passwordResetKey, "1");
+    }
     const session = {
       access_token: params.get("access_token"),
       refresh_token: params.get("refresh_token"),
@@ -126,7 +128,8 @@ class MyAmbiCloud {
   }
 
   passwordResetActive() {
-    return this.callbackType === "recovery" || localStorage.getItem(this.passwordResetKey) === "1";
+    return ["recovery", "invite"].includes(this.callbackType) ||
+      localStorage.getItem(this.passwordResetKey) === "1";
   }
 
   clearPasswordReset() {

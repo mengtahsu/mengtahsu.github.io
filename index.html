@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=23">
+  <link rel="stylesheet" href="/styles.css?v=26">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -141,20 +141,26 @@
             <fieldset id="personal-room-choices" class="plain-fieldset"><legend>首頁顯示</legend></fieldset>
           </section>
 
-          <section class="panel admin-only">
-            <span class="step">現在就能試</span>
-            <h2>模擬三個房間</h2>
-            <p>建立主臥、客廳、女兒房。所有按鈕和雲端學習演算法都會運作，只是不發送紅外線。</p>
-            <button id="demo-button" class="secondary">建立模擬房間</button>
+          <section class="panel wide admin-only">
+            <span class="step">每個家各自管理</span>
+            <h2>房間與遙控器</h2>
+            <p>先新增房間，再直接在該房間加入虛擬遙控器或 Sensibo。刪除房間會連同遙控器、歷史與學習資料一起刪除。</p>
+            <form id="new-room-form" class="new-room-form">
+              <label>房間名稱<input name="name" maxlength="80" required placeholder="例如：書房"></label>
+              <button class="primary" type="submit">新增房間</button>
+            </form>
+            <button id="demo-button" class="text-button" type="button">快速建立三個含虛擬遙控器的示範房間</button>
+            <div id="room-management-list" class="room-management-list"></div>
           </section>
 
           <section class="panel admin-only">
             <span class="step">Sensibo 到貨後</span>
             <h2>連接 Sensibo</h2>
-            <p>先用 Sensibo 官方 App 完成 Wi‑Fi 和冷氣配對，再貼上帳號設定頁產生的 API Key。</p>
+            <p>先用 Sensibo 官方 App 完成 Wi‑Fi 和冷氣配對，再貼上 API Key。連線後，回到上方各房間選擇要加入的遙控器。</p>
             <label>API Key<input id="sensibo-key" type="password" autocomplete="off" placeholder="會加密存進 Supabase Vault"></label>
             <div class="button-row">
-              <button id="save-key-button" class="secondary">連接並匯入遙控器</button>
+              <button id="save-key-button" class="secondary">連接並讀取遙控器</button>
+              <button id="reload-sensibo-button" class="text-button" type="button">重新讀取已連接的 Sensibo</button>
             </div>
           </section>
 
@@ -181,7 +187,19 @@
               <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
               <button class="primary" type="submit">新增成員</button>
             </form>
+            <div id="invite-result" class="invite-result hidden">
+              <strong>把這個私人邀請連結傳給家人</strong>
+              <p>新成員開啟一次並設定密碼後，這台裝置會保持登入。</p>
+              <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製</button></div>
+            </div>
             <div id="members-list" class="members-list"></div>
+          </section>
+
+          <section id="platform-admin-panel" class="panel wide hidden">
+            <span class="step">只有你能使用</span>
+            <h2>平台帳號管理</h2>
+            <p>這裡是整個 MyAmbi 的帳號清單。刪除帳號會一併刪除該帳號自己建立的家與其中全部資料；只想讓某人離開你的家，請使用上方家庭成員的「移出此家」。</p>
+            <div id="platform-users-list" class="platform-users-list"></div>
           </section>
         </div>
       </section>
@@ -202,8 +220,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=23"></script>
-  <script src="/cloud-client.js?v=23"></script>
-  <script src="/app.js?v=23" defer></script>
+  <script src="/config.js?v=26"></script>
+  <script src="/cloud-client.js?v=26"></script>
+  <script src="/app.js?v=26" defer></script>
 </body>
 </html>

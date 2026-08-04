@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
+const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -80,7 +80,8 @@ async function boot() {
     }
     state.user = await cloud.user();
     if (!state.user) return showAuth("login");
-    if (cloud.passwordResetActive() || new URLSearchParams(location.search).get("password-reset") === "1") {
+    const authParams = new URLSearchParams(location.search);
+    if (cloud.passwordResetActive() || authParams.get("password-reset") === "1" || authParams.get("set-password") === "1") {
       history.replaceState({}, document.title, location.pathname);
       return showAuth("password-reset");
     }
@@ -520,11 +521,19 @@ async function loadSettings() {
   state.household = result.household;
   state.users = result.members;
   state.allRooms = result.rooms;
+  renderRoomManagement();
   renderSchedules();
   renderLocations();
-  $("#members-list").replaceChildren(
-    ...state.users.filter((user) => user.role === "member").map(memberRow),
-  );
+  $("#members-list").replaceChildren(...state.users.map(memberRow));
+  try {
+    const platform = await cloud.function("platform-users", {}, "GET");
+    state.platformUsers = platform.users ?? [];
+    $("#platform-admin-panel").classList.remove("hidden");
+    renderPlatformUsers();
+  } catch (_) {
+    state.platformUsers = [];
+    $("#platform-admin-panel").classList.add("hidden");
+  }
 }
 
 function renderLearning() {
@@ -647,9 +656,46 @@ function memberRow(member) {
   const row = document.createElement("div"); row.className = "member-row";
   const identity = document.createElement("div");
   const name = document.createElement("div"); name.className = "member-name"; name.textContent = member.display_name;
-  const role = document.createElement("div"); role.className = "member-role"; role.textContent = "家庭成員 · 可自行選擇首頁房間";
+  const labels = { owner: "家庭擁有者", admin: "家庭管理員", member: "家庭成員" };
+  const role = document.createElement("div"); role.className = "member-role";
+  role.textContent = `${labels[member.role] || "家庭成員"}${member.email ? ` · ${member.email}` : ""}`;
   identity.append(name, role);
-  row.append(identity); return row;
+  row.append(identity);
+  if (member.role !== "owner" && !member.is_self) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "member-remove-button";
+    remove.dataset.userId = member.user_id;
+    remove.dataset.memberName = member.display_name;
+    remove.textContent = "移出此家";
+    row.append(remove);
+  }
+  return row;
+}
+
+function renderPlatformUsers() {
+  const list = $("#platform-users-list");
+  list.replaceChildren(...state.platformUsers.map((account) => {
+    const row = document.createElement("div"); row.className = "platform-user-row";
+    const identity = document.createElement("div");
+    const name = document.createElement("strong"); name.textContent = account.display_name;
+    const detail = document.createElement("span");
+    const homes = (account.homes ?? []).map((home) => `${home.name || "家"}（${home.role}）`).join("、");
+    detail.textContent = `${account.email || "沒有 Email"} · ${homes || "尚未加入任何家"}`;
+    identity.append(name, detail); row.append(identity);
+    if (account.is_self || account.is_platform_admin) {
+      const badge = document.createElement("span"); badge.className = "platform-badge";
+      badge.textContent = account.is_self ? "你 · 平台管理員" : "平台管理員";
+      row.append(badge);
+    } else {
+      const button = document.createElement("button"); button.type = "button";
+      button.className = "account-delete-button";
+      button.dataset.userId = account.id; button.dataset.email = account.email;
+      button.textContent = "刪除帳號"; row.append(button);
+    }
+    return row;
+  }));
+  if (!state.platformUsers.length) list.textContent = "目前沒有其他帳號。";
 }
 
 function renderSchedules() {
@@ -669,6 +715,63 @@ function renderSchedules() {
     return form;
   }));
   if (!state.allRooms.length) list.textContent = "請先建立或匯入房間。";
+}
+
+function renderRoomManagement() {
+  const list = $("#room-management-list");
+  if (!state.allRooms.length) {
+    list.textContent = "這個家目前沒有房間。";
+    return;
+  }
+  list.replaceChildren(...state.allRooms.map((room) => {
+    const row = document.createElement("section");
+    row.className = "room-management-row";
+    const heading = document.createElement("div"); heading.className = "room-management-heading";
+    const identity = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = room.name;
+    const kind = document.createElement("span");
+    kind.textContent = `${room.remotes?.length || 0} 台遙控器`;
+    identity.append(name, kind);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "room-delete-button";
+    button.dataset.roomId = room.id;
+    button.dataset.roomName = room.name;
+    button.textContent = "刪除";
+    heading.append(identity, button);
+    const remoteList = document.createElement("div"); remoteList.className = "remote-list";
+    for (const remote of room.remotes ?? []) {
+      const remoteRow = document.createElement("div"); remoteRow.className = "remote-row";
+      const remoteText = document.createElement("span");
+      remoteText.textContent = `${remote.name} · ${remote.provider === "sensibo" ? "Sensibo" : "虛擬"}${remote.is_primary ? " · 主要" : ""}`;
+      const remove = document.createElement("button"); remove.type = "button";
+      remove.className = "remote-delete-button"; remove.dataset.remoteId = remote.id;
+      remove.dataset.remoteName = remote.name; remove.textContent = "移除";
+      remoteRow.append(remoteText, remove); remoteList.append(remoteRow);
+    }
+    if (!(room.remotes ?? []).length) {
+      const empty = document.createElement("p"); empty.className = "remote-empty";
+      empty.textContent = "尚未新增遙控器；未連接前不會啟動演算法。"; remoteList.append(empty);
+    }
+    const controls = document.createElement("div"); controls.className = "remote-add-controls";
+    const demo = document.createElement("button"); demo.type = "button";
+    demo.className = "secondary add-demo-remote"; demo.dataset.roomId = room.id;
+    demo.textContent = "新增虛擬遙控器"; controls.append(demo);
+    if (state.sensiboDevices.length) {
+      const select = document.createElement("select"); select.className = "sensibo-device-select";
+      select.setAttribute("aria-label", `${room.name} 的 Sensibo 遙控器`);
+      for (const device of state.sensiboDevices) {
+        const option = document.createElement("option"); option.value = device.deviceId;
+        option.textContent = device.name; select.append(option);
+      }
+      const add = document.createElement("button"); add.type = "button";
+      add.className = "secondary add-sensibo-remote"; add.dataset.roomId = room.id;
+      add.textContent = "加入 Sensibo"; controls.append(select, add);
+    }
+    row.append(heading, remoteList, controls);
+    return row;
+  }));
 }
 
 function renderLocations() {
@@ -841,14 +944,125 @@ $("#trusted-device-login").addEventListener("click", async (event) => {
   finally { setBusy(button, false); }
 });
 
+$("#new-room-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = event.submitter;
+  const name = new FormData(form).get("name");
+  setBusy(button, true);
+  try {
+    await cloud.function("create-room", { name });
+    form.reset();
+    await loadSettings();
+    await loadRooms();
+    showToast(`已新增 ${name}`);
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#room-management-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  if (button.classList.contains("add-demo-remote")) {
+    setBusy(button, true);
+    try {
+      await cloud.function("add-demo-remote", { room_id: button.dataset.roomId });
+      await loadSettings(); await loadRooms(); showToast("已新增虛擬遙控器");
+    } catch (error) { showToast(error.message, true); }
+    finally { setBusy(button, false); }
+    return;
+  }
+  if (button.classList.contains("add-sensibo-remote")) {
+    const deviceId = button.parentElement.querySelector(".sensibo-device-select")?.value;
+    setBusy(button, true);
+    try {
+      await cloud.function("add-sensibo-remote", { room_id: button.dataset.roomId, device_id: deviceId });
+      await loadSettings(); await loadRooms(); showToast("已把 Sensibo 加入房間");
+    } catch (error) { showToast(error.message, true); }
+    finally { setBusy(button, false); }
+    return;
+  }
+  if (button.classList.contains("remote-delete-button")) {
+    const name = button.dataset.remoteName;
+    if (!window.confirm(`確定從房間移除「${name}」？`)) return;
+    setBusy(button, true);
+    try {
+      await cloud.function("delete-remote", { remote_id: button.dataset.remoteId });
+      await loadSettings(); await loadRooms(); showToast(`已移除 ${name}`);
+    } catch (error) { showToast(error.message, true); }
+    finally { setBusy(button, false); }
+    return;
+  }
+  if (!button.classList.contains("room-delete-button")) return;
+  const name = button.dataset.roomName;
+  if (!window.confirm(`確定刪除「${name}」？這個房間的歷史與學習資料也會刪除。`)) return;
+  setBusy(button, true);
+  try {
+    await cloud.function("delete-room", { room_id: button.dataset.roomId });
+    await loadSettings();
+    await loadRooms();
+    showToast(`已刪除 ${name}`);
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
 $("#member-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const formElement = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
     const form = new FormData(formElement);
-    await cloud.function("invite-member", {
+    const result = await cloud.function("invite-member", {
       display_name: form.get("display_name"), email: form.get("email"),
     });
-    formElement.reset(); await loadSettings(); showToast("邀請信已寄出");
+    formElement.reset();
+    if (result.invite_link) {
+      $("#invite-link").value = result.invite_link;
+      $("#invite-result").classList.remove("hidden");
+      showToast("已建立私人邀請連結，請複製傳給家人");
+    } else {
+      $("#invite-result").classList.add("hidden");
+      showToast("這個帳號已存在，現在登入即可看到這個家");
+    }
+    await loadSettings();
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#copy-invite-link").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("#invite-link").value);
+    showToast("邀請連結已複製");
+  } catch (_) {
+    $("#invite-link").select(); document.execCommand("copy"); showToast("邀請連結已複製");
+  }
+});
+
+$("#members-list").addEventListener("click", async (event) => {
+  const button = event.target.closest(".member-remove-button");
+  if (!button) return;
+  if (!window.confirm(`確定把「${button.dataset.memberName}」移出這個家？對方自己的帳號與其他家不會被刪除。`)) return;
+  setBusy(button, true);
+  try {
+    await cloud.function("remove-member", { user_id: button.dataset.userId });
+    await loadSettings(); showToast("已移出這個家");
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#platform-users-list").addEventListener("click", async (event) => {
+  const button = event.target.closest(".account-delete-button");
+  if (!button) return;
+  const email = button.dataset.email;
+  const message = `確定永久刪除 ${email}？\n\n這會刪除帳號，以及該帳號自己建立的所有家、房間、遙控器、歷史與學習資料。此動作無法復原。`;
+  if (!window.confirm(message)) return;
+  setBusy(button, true);
+  try {
+    await cloud.function("delete-account", {
+      user_id: button.dataset.userId,
+      confirmation: email,
+    });
+    const result = await cloud.function("platform-users", {}, "GET");
+    state.platformUsers = result.users ?? []; renderPlatformUsers();
+    showToast(`已刪除 ${email}`);
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -866,8 +1080,19 @@ $("#save-key-button").addEventListener("click", async (event) => {
   setBusy(button, true);
   try {
     const result = await cloud.function("connect-sensibo", { api_key: $("#sensibo-key").value });
+    state.sensiboDevices = result.devices ?? [];
     $("#sensibo-key").value = ""; await loadRooms(); await loadSettings();
-    showToast(`連線成功，已匯入 ${result.devices.length} 台 Sensibo`);
+    showToast(`連線成功，找到 ${result.devices.length} 台 Sensibo；請到房間內加入`);
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#reload-sensibo-button").addEventListener("click", async (event) => {
+  const button = event.currentTarget; setBusy(button, true);
+  try {
+    const result = await cloud.function("sensibo-devices", {}, "GET");
+    state.sensiboDevices = result.devices ?? []; renderRoomManagement();
+    showToast(`已讀取 ${state.sensiboDevices.length} 台 Sensibo`);
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -937,5 +1162,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=23").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=26").then((registration) => registration.update()).catch(() => {});
 }
