@@ -256,8 +256,8 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series-controls button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: transparent; color: var(--muted); font-size: .76rem; font-weight: 800; }
 .chart-series-controls button.active { background: var(--green-soft); border-color: rgba(39,104,79,.32); color: var(--green); }
 .chart-tools span { min-width: 48px; text-align: center; color: var(--muted); font-size: .88rem; }
-.chart-frame { display: grid; grid-template-columns: var(--chart-left-axis,30px) minmax(0,1fr) var(--chart-right-axis,34px); align-items: start; width: 100%; }
-.chart-fixed-axis { position: relative; z-index: 2; min-width: 0; background: white; color: var(--muted); font-size: .69rem; font-weight: 700; }
+.chart-frame { display: grid; grid-template-columns: var(--chart-left-axis,28px) minmax(0,1fr) var(--chart-right-axis,30px); align-items: start; width: 100%; }
+.chart-fixed-axis { position: relative; z-index: 2; min-width: 0; background: white; color: var(--muted); font-size: .66rem; font-weight: 700; }
 .chart-fixed-axis span { position: absolute; top: 0; transform: translateY(-50%); white-space: nowrap; }
 .chart-fixed-axis.left { border-right: 1px solid rgba(23,33,29,.08); }
 .chart-fixed-axis.left span { right: 4px; }
@@ -304,9 +304,9 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 }
 
 @media (max-width: 600px) {
-  dialog { width: calc(100% - 8px); max-height: 92vh; padding: 12px; border-radius: 20px; }
+  dialog { width: calc(100% - 4px); max-width: none; max-height: 92vh; padding: 8px; border-radius: 18px; }
   .history-content { margin-top: 14px; }
-  .climate-chart { padding: 10px 7px; border-radius: 14px; margin-bottom: 12px; }
+  .climate-chart { padding: 8px 4px; border-radius: 13px; margin-bottom: 12px; }
   .shell { width: min(100% - 24px, 1180px); padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .topbar { margin-bottom: 42px; }
   .user-chip { display: none; }

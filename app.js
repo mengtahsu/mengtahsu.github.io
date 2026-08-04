@@ -360,7 +360,7 @@ function renderHistoryContent() {
   }
 }
 
-function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 30, rightWidth = 34 }) {
+function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 28, rightWidth = 30 }) {
   const frame = document.createElement("div");
   frame.className = "chart-frame";
   frame.style.setProperty("--chart-left-axis", `${leftWidth}px`);
@@ -662,7 +662,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   svg.style.width = `${Math.round(760 * zoom)}px`; svg.style.maxWidth = "none";
   section.append(fixedAxisChart(svg, {
     height: 230, zoom, leftLabels: leftAxisLabels, rightLabels: rightAxisLabels,
-    leftWidth: 30, rightWidth: 34,
+    leftWidth: 28, rightWidth: 30,
   }));
   const legend = document.createElement("div"); legend.className = "chart-legend";
   [["tvoc", "TVOC（ppb）"], ["co2", "eCO₂估算（ppm）"]].forEach(([className, text]) => {
@@ -1485,5 +1485,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=39").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=40").then((registration) => registration.update()).catch(() => {});
 }
