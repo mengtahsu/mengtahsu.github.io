@@ -256,7 +256,14 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series-controls button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: transparent; color: var(--muted); font-size: .76rem; font-weight: 800; }
 .chart-series-controls button.active { background: var(--green-soft); border-color: rgba(39,104,79,.32); color: var(--green); }
 .chart-tools span { min-width: 48px; text-align: center; color: var(--muted); font-size: .88rem; }
-.chart-viewport { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.chart-frame { display: grid; grid-template-columns: var(--chart-left-axis,42px) minmax(0,1fr) var(--chart-right-axis,46px); align-items: start; width: 100%; }
+.chart-fixed-axis { position: relative; z-index: 2; min-width: 0; background: white; color: var(--muted); font-size: .76rem; font-weight: 700; }
+.chart-fixed-axis span { position: absolute; top: 0; transform: translateY(-50%); white-space: nowrap; }
+.chart-fixed-axis.left { border-right: 1px solid rgba(23,33,29,.08); box-shadow: 6px 0 10px -10px rgba(23,33,29,.6); }
+.chart-fixed-axis.left span { right: 7px; }
+.chart-fixed-axis.right { border-left: 1px solid rgba(23,33,29,.08); box-shadow: -6px 0 10px -10px rgba(23,33,29,.6); }
+.chart-fixed-axis.right span { left: 7px; }
+.chart-viewport { min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
 .chart-axis-label { fill: var(--muted); font-size: 13px; font-weight: 650; }
@@ -264,6 +271,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series.indoor { stroke: var(--green); }
 .chart-series.outdoor { stroke: var(--warm); }
 .chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
+.chart-series.comfort-target { stroke: #ae6389; stroke-dasharray: 2 5; }
 .chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
 .chart-series.tvoc { stroke: #bf713f; }
 .chart-series.co2 { stroke: #3d7896; }
@@ -274,6 +282,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-legend i.indoor { color: var(--green); }
 .chart-legend i.outdoor { color: var(--warm); }
 .chart-legend i.target { color: var(--blue); }
+.chart-legend i.comfort-target { color: #ae6389; }
 .chart-legend i.humidity { color: #8470a8; }
 .chart-legend i.power { color: rgba(47,111,155,.65); height: 6px; }
 .chart-legend i.tvoc { color: #bf713f; }

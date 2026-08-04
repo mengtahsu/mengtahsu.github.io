@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], sleep: null, allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, historySeries: { temperature: true, outdoor_temperature: true, target_temperature: true, humidity: true, power: true }, refreshTimer: null };
+const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], sleep: null, allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, historySeries: { temperature: true, outdoor_temperature: true, target_temperature: true, comfort_target_temperature: true, humidity: true, power: true }, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -360,6 +360,31 @@ function renderHistoryContent() {
   }
 }
 
+function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 42, rightWidth = 46 }) {
+  const frame = document.createElement("div");
+  frame.className = "chart-frame";
+  frame.style.setProperty("--chart-left-axis", `${leftWidth}px`);
+  frame.style.setProperty("--chart-right-axis", `${rightWidth}px`);
+  const axis = (side, labels) => {
+    const container = document.createElement("div");
+    container.className = `chart-fixed-axis ${side}`;
+    container.style.height = `${Math.round(height * zoom)}px`;
+    container.setAttribute("aria-hidden", "true");
+    for (const item of labels) {
+      const label = document.createElement("span");
+      label.textContent = item.text;
+      label.style.top = `${item.y / height * 100}%`;
+      container.append(label);
+    }
+    return container;
+  };
+  const viewport = document.createElement("div");
+  viewport.className = "chart-viewport";
+  viewport.append(svg);
+  frame.append(axis("left", leftLabels), viewport, axis("right", rightLabels));
+  return frame;
+}
+
 function climateChart(rawReadings, days = 1, zoom = 1) {
   const section = document.createElement("section");
   section.className = "climate-chart";
@@ -423,7 +448,8 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   seriesControls.className = "chart-series-controls";
   const seriesOptions = [
     ["temperature", "室內"], ["outdoor_temperature", "室外"],
-    ["target_temperature", "冷氣設定"], ["humidity", "濕度"],
+    ["target_temperature", "冷氣設定"], ["comfort_target_temperature", "舒適目標"],
+    ["humidity", "濕度"],
     ["power", "運轉狀態"],
   ];
   for (const [key, labelText] of seriesOptions) {
@@ -437,7 +463,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", "0 0 760 300");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "室內、室外、冷氣設定溫度與濕度隨時間變化");
+  svg.setAttribute("aria-label", "室內、室外、冷氣設定、舒適目標溫度與濕度隨時間變化");
   const margin = { left: 44, right: 44, top: 20, bottom: 34 };
   const plotWidth = 760 - margin.left - margin.right;
   const plotHeight = 300 - margin.top - margin.bottom;
@@ -449,6 +475,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     numericValue(row.temperature),
     numericValue(row.outdoor_temperature),
     numericValue(row.target_temperature),
+    numericValue(row.comfort_target_temperature),
   ]).filter((value) => value !== null);
   if (!temperatureValues.length) {
     const empty = document.createElement("p");
@@ -478,12 +505,14 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     element.setAttribute("class", "chart-axis-label");
     svg.append(element);
   };
+  const leftAxisLabels = [];
+  const rightAxisLabels = [];
   for (let index = 0; index <= 4; index += 1) {
     const y = margin.top + plotHeight * index / 4;
     const temp = temperatureMax - (temperatureMax - temperatureMin) * index / 4;
     line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
-    label(`${temp.toFixed(0)}°`, margin.left - 7, y + 4);
-    label(`${100 - index * 25}%`, 760 - margin.right + 7, y + 4, "start");
+    leftAxisLabels.push({ text: `${temp.toFixed(0)}°`, y });
+    rightAxisLabels.push({ text: `${100 - index * 25}%`, y });
   }
   const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
   [0, 0.5, 1].forEach((position) => {
@@ -527,19 +556,19 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   if (state.historySeries.temperature) addPath("temperature", yTemperature, "indoor");
   if (state.historySeries.outdoor_temperature) addPath("outdoor_temperature", yTemperature, "outdoor");
   if (state.historySeries.target_temperature) addPath("target_temperature", yTemperature, "target");
+  if (state.historySeries.comfort_target_temperature) addPath("comfort_target_temperature", yTemperature, "comfort-target");
   if (state.historySeries.humidity) addPath("humidity", yHumidity, "humidity");
   // Keep the SVG close to its 760-unit viewBox width so axis text does not
   // shrink to unreadable sizes on an iPhone. The viewport scrolls sideways.
   svg.style.width = `${Math.round(760 * zoom)}px`;
   svg.style.maxWidth = "none";
-  const viewport = document.createElement("div");
-  viewport.className = "chart-viewport";
-  viewport.append(svg);
-  section.append(viewport);
+  section.append(fixedAxisChart(svg, {
+    height: 300, zoom, leftLabels: leftAxisLabels, rightLabels: rightAxisLabels,
+  }));
 
   const legend = document.createElement("div");
   legend.className = "chart-legend";
-  [["indoor", "室內溫度", "temperature"], ["outdoor", "室外溫度", "outdoor_temperature"], ["target", "冷氣設定", "target_temperature"], ["humidity", "室內濕度", "humidity"], ["power", "冷氣運轉", "power"]].filter(([, , key]) => state.historySeries[key]).forEach(([className, text]) => {
+  [["indoor", "室內溫度", "temperature"], ["outdoor", "室外溫度", "outdoor_temperature"], ["target", "冷氣設定", "target_temperature"], ["comfort-target", "舒適目標", "comfort_target_temperature"], ["humidity", "室內濕度", "humidity"], ["power", "冷氣運轉", "power"]].filter(([, , key]) => state.historySeries[key]).forEach(([className, text]) => {
     const item = document.createElement("span");
     item.innerHTML = `<i class="${className}"></i>${text}`;
     legend.append(item);
@@ -605,11 +634,13 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
     item.setAttribute("x", String(xValue)); item.setAttribute("y", String(yValue));
     item.setAttribute("text-anchor", anchor); item.setAttribute("class", "chart-axis-label"); svg.append(item);
   };
+  const leftAxisLabels = [];
+  const rightAxisLabels = [];
   for (let index = 0; index <= 4; index += 1) {
     const y = margin.top + plotHeight * index / 4;
     line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
-    label(`${Math.round(tvocMax * (1 - index / 4))} ppb`, margin.left - 7, y + 4);
-    label(`${Math.round(co2Max - (co2Max - co2Min) * index / 4)} ppm`, 760 - margin.right + 7, y + 4, "start");
+    leftAxisLabels.push({ text: `${Math.round(tvocMax * (1 - index / 4))} ppb`, y });
+    rightAxisLabels.push({ text: `${Math.round(co2Max - (co2Max - co2Min) * index / 4)} ppm`, y });
   }
   const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
   [0, 0.5, 1].forEach((position) => {
@@ -629,7 +660,10 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   };
   addPath("tvoc", yTvoc, "tvoc"); addPath("co2", yCo2, "co2");
   svg.style.width = `${Math.round(760 * zoom)}px`; svg.style.maxWidth = "none";
-  const viewport = document.createElement("div"); viewport.className = "chart-viewport"; viewport.append(svg); section.append(viewport);
+  section.append(fixedAxisChart(svg, {
+    height: 230, zoom, leftLabels: leftAxisLabels, rightLabels: rightAxisLabels,
+    leftWidth: 62, rightWidth: 66,
+  }));
   const legend = document.createElement("div"); legend.className = "chart-legend";
   [["tvoc", "TVOC（ppb）"], ["co2", "eCO₂估算（ppm）"]].forEach(([className, text]) => {
     const item = document.createElement("span"); item.innerHTML = `<i class="${className}"></i>${text}`; legend.append(item);
@@ -640,7 +674,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
 
 function downloadHistoryCsv() {
   if (!state.historyRoom || !state.historyReadings.length) return showToast("目前沒有可下載的資料", true);
-  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "humidity", "outdoor_humidity", "tvoc", "co2", "is_on"];
+  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "comfort_target_temperature", "humidity", "outdoor_humidity", "tvoc", "co2", "is_on"];
   const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
   const csv = [columns.join(","), ...state.historyReadings.map((row) => columns.map((key) => escapeCsv(row[key])).join(","))].join("\n");
   const link = document.createElement("a");
@@ -1451,5 +1485,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=37").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=38").then((registration) => registration.update()).catch(() => {});
 }
