@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=26">
+  <link rel="stylesheet" href="/styles.css?v=27">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -95,7 +95,7 @@
         <div id="empty-state" class="empty panel hidden">
           <div class="empty-icon">⌁</div>
           <h2>還沒有房間</h2>
-          <p class="admin-copy">可先在設定建立三個模擬房間；Sensibo 到貨後再匯入真正的冷氣。</p>
+          <p class="admin-copy">請先新增房間，再在房間內加入虛擬遙控器或 Sensibo。</p>
           <p class="member-copy">可在設定中選擇要顯示的房間。</p>
           <button id="open-settings-empty" class="primary admin-only">前往設定</button>
         </div>
@@ -149,19 +149,17 @@
               <label>房間名稱<input name="name" maxlength="80" required placeholder="例如：書房"></label>
               <button class="primary" type="submit">新增房間</button>
             </form>
-            <button id="demo-button" class="text-button" type="button">快速建立三個含虛擬遙控器的示範房間</button>
+            <button id="demo-button" class="text-button" type="button">快速建立主臥、客廳、女兒房，並各加入虛擬遙控器</button>
+            <details id="sensibo-tools" class="sensibo-inline-tools">
+              <summary>連接真實 Sensibo 遙控器</summary>
+              <p>只需為這個家連接一次 Sensibo 帳號；讀取後，每個房間都能從自己的區塊選擇要加入的真實遙控器。</p>
+              <label>API Key<input id="sensibo-key" type="password" autocomplete="off" placeholder="會加密存進 Supabase Vault"></label>
+              <div class="button-row">
+                <button id="save-key-button" class="secondary">連接並讀取 Sensibo</button>
+                <button id="reload-sensibo-button" class="text-button" type="button">重新讀取已連接的 Sensibo</button>
+              </div>
+            </details>
             <div id="room-management-list" class="room-management-list"></div>
-          </section>
-
-          <section class="panel admin-only">
-            <span class="step">Sensibo 到貨後</span>
-            <h2>連接 Sensibo</h2>
-            <p>先用 Sensibo 官方 App 完成 Wi‑Fi 和冷氣配對，再貼上 API Key。連線後，回到上方各房間選擇要加入的遙控器。</p>
-            <label>API Key<input id="sensibo-key" type="password" autocomplete="off" placeholder="會加密存進 Supabase Vault"></label>
-            <div class="button-row">
-              <button id="save-key-button" class="secondary">連接並讀取遙控器</button>
-              <button id="reload-sensibo-button" class="text-button" type="button">重新讀取已連接的 Sensibo</button>
-            </div>
           </section>
 
           <section class="panel wide admin-only">
@@ -176,7 +174,7 @@
             <h2>這個家的位置</h2>
             <p>每個家只需設定一次，家裡所有房間共用同一份室外天氣。填縣市與行政區就夠了，不必提供門牌；其他家可以設定不同位置。</p>
             <div id="locations-list" class="locations-list"></div>
-            <p class="source-note">地點資料 © OpenStreetMap contributors；室外天氣由 Open‑Meteo 提供，是附近區域的氣象估計值。</p>
+            <p class="source-note">地點資料 © OpenStreetMap contributors；室外天氣由 Open‑Meteo 提供。即使房間使用虛擬遙控器，室外溫濕度仍取自這個家的真實位置。</p>
           </section>
 
           <section class="panel wide admin-only">
@@ -220,8 +218,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=26"></script>
-  <script src="/cloud-client.js?v=26"></script>
-  <script src="/app.js?v=26" defer></script>
+  <script src="/config.js?v=27"></script>
+  <script src="/cloud-client.js?v=27"></script>
+  <script src="/app.js?v=27" defer></script>
 </body>
 </html>

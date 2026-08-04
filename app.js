@@ -521,6 +521,12 @@ async function loadSettings() {
   state.household = result.household;
   state.users = result.members;
   state.allRooms = result.rooms;
+  if (state.status?.sensibo_connected && !state.sensiboDevices.length) {
+    try {
+      const sensibo = await cloud.function("sensibo-devices", {}, "GET");
+      state.sensiboDevices = sensibo.devices ?? [];
+    } catch (_) {}
+  }
   renderRoomManagement();
   renderSchedules();
   renderLocations();
@@ -768,6 +774,10 @@ function renderRoomManagement() {
       const add = document.createElement("button"); add.type = "button";
       add.className = "secondary add-sensibo-remote"; add.dataset.roomId = room.id;
       add.textContent = "加入 Sensibo"; controls.append(select, add);
+    } else {
+      const connect = document.createElement("button"); connect.type = "button";
+      connect.className = "text-button show-sensibo-tools";
+      connect.textContent = "新增真實 Sensibo"; controls.append(connect);
     }
     row.append(heading, remoteList, controls);
     return row;
@@ -966,7 +976,7 @@ $("#room-management-list").addEventListener("click", async (event) => {
   if (button.classList.contains("add-demo-remote")) {
     setBusy(button, true);
     try {
-      await cloud.function("add-demo-remote", { room_id: button.dataset.roomId });
+      await cloud.function("add-virtual-remote", { room_id: button.dataset.roomId });
       await loadSettings(); await loadRooms(); showToast("已新增虛擬遙控器");
     } catch (error) { showToast(error.message, true); }
     finally { setBusy(button, false); }
@@ -980,6 +990,12 @@ $("#room-management-list").addEventListener("click", async (event) => {
       await loadSettings(); await loadRooms(); showToast("已把 Sensibo 加入房間");
     } catch (error) { showToast(error.message, true); }
     finally { setBusy(button, false); }
+    return;
+  }
+  if (button.classList.contains("show-sensibo-tools")) {
+    const tools = $("#sensibo-tools"); tools.open = true;
+    tools.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#sensibo-key").focus();
     return;
   }
   if (button.classList.contains("remote-delete-button")) {
@@ -1070,7 +1086,7 @@ $("#platform-users-list").addEventListener("click", async (event) => {
 $("#demo-button").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   setBusy(button, true);
-  try { await cloud.function("demo"); await loadRooms(); await loadSettings(); showToast("三個模擬房間已建立"); }
+  try { await cloud.function("starter-rooms"); await loadRooms(); await loadSettings(); showToast("已建立三個房間，並各加入虛擬遙控器"); }
   catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -1162,5 +1178,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=26").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=27").then((registration) => registration.update()).catch(() => {});
 }
