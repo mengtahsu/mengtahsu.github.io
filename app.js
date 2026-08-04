@@ -761,15 +761,15 @@ $("#setup-form").addEventListener("submit", async (event) => {
 });
 
 $("#new-household-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  event.preventDefault(); const form = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const values = Object.fromEntries(new FormData(form));
     const created = await cloud.function("bootstrap", {
       household_name: values.household_name,
       display_name: displayName(),
     });
     cloud.setActiveHousehold(created.household_id);
-    event.currentTarget.reset();
+    form.reset();
     await boot();
     showToast("新的家已建立");
   } catch (error) { showToast(error.message, true); }
@@ -784,12 +784,12 @@ $("#household-switcher").addEventListener("change", async (event) => {
 });
 
 $("#login-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  event.preventDefault(); const form = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
     $("#auth-error").classList.add("hidden");
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const values = Object.fromEntries(new FormData(form));
     await cloud.signInWithPassword(values.email, values.password);
-    event.currentTarget.reset();
+    form.reset();
     await boot();
   } catch (error) {
     $("#auth-error").textContent = "Email 或密碼不正確；如果還沒設定密碼，請按下方的設定密碼。";
@@ -799,27 +799,28 @@ $("#login-form").addEventListener("submit", async (event) => {
 });
 
 $("#request-password-reset").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
   const email = new FormData($("#login-form")).get("email");
   if (!email) return showToast("請先輸入 Email", true);
-  setBusy(event.currentTarget, true);
+  setBusy(button, true);
   try {
     await cloud.sendPasswordReset(email);
     showToast("設定密碼信已寄出；請到 Email 點確認連結");
   } catch (error) { showToast(`無法寄信：${error.message}`, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 
 $("#password-reset-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  event.preventDefault(); const form = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
     $("#password-reset-error").classList.add("hidden");
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const values = Object.fromEntries(new FormData(form));
     if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
     await cloud.updatePassword(values.password);
     await cloud.registerTrustedDevice();
     cloud.clearPasswordReset();
     history.replaceState({}, document.title, `${location.pathname}#rooms`);
-    event.currentTarget.reset();
+    form.reset();
     showToast("密碼已設定，正在回到你的家");
     await boot();
   } catch (error) {
@@ -832,44 +833,48 @@ $("#password-reset-form").addEventListener("submit", async (event) => {
 });
 
 $("#trusted-device-login").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try {
     await cloud.restoreDevice();
     await boot();
   } catch (error) { showToast(`無法登入：${error.message}`, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 
 $("#member-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  event.preventDefault(); const formElement = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     await cloud.function("invite-member", {
       display_name: form.get("display_name"), email: form.get("email"),
     });
-    event.currentTarget.reset(); await loadSettings(); showToast("邀請信已寄出");
+    formElement.reset(); await loadSettings(); showToast("邀請信已寄出");
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
 
 $("#demo-button").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try { await cloud.function("demo"); await loadRooms(); await loadSettings(); showToast("三個模擬房間已建立"); }
   catch (error) { showToast(error.message, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 
 $("#save-key-button").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try {
     const result = await cloud.function("connect-sensibo", { api_key: $("#sensibo-key").value });
     $("#sensibo-key").value = ""; await loadRooms(); await loadSettings();
     showToast(`連線成功，已匯入 ${result.devices.length} 台 Sensibo`);
   } catch (error) { showToast(error.message, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 
 $("#notification-button").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
   if (!("Notification" in window)) {
     showToast("這個瀏覽器不支援裝置通知；故障仍會顯示在 MyAmbi", true);
     return;
@@ -880,7 +885,7 @@ $("#notification-button").addEventListener("click", async (event) => {
       showToast("尚未允許通知；故障仍會保存在 MyAmbi", true);
       return;
     }
-    event.currentTarget.textContent = "裝置通知已開啟";
+    button.textContent = "裝置通知已開啟";
     await maybeNotifyAlerts(true);
     showToast("MyAmbi 故障通知已開啟");
   } catch (_) {
@@ -933,5 +938,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=20").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=21").then((registration) => registration.update()).catch(() => {});
 }
