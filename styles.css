@@ -84,11 +84,14 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .target-row small { color: var(--muted); font-size: .68rem; text-align: center; }
 .target-value { font-weight: 900; min-width: 54px; text-align: center; }
 .feeling-label { color: var(--muted); font-size: .95rem; font-weight: 750; margin: auto 0 10px; }
-.feelings { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
-.comfort-action { grid-column: span 2; min-height: 82px; border: 1px solid var(--line); background: rgba(255,255,255,.7); padding: 12px 5px; border-radius: 15px; font-size: 1.12rem; font-weight: 850; color: var(--ink); line-height: 1.2; }
+.feelings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.comfort-action { min-height: 82px; border: 1px solid var(--line); background: rgba(255,255,255,.7); padding: 12px 5px; border-radius: 15px; font-size: 1.12rem; font-weight: 850; color: var(--ink); line-height: 1.2; }
 .comfort-action span { display: block; font-size: 1.6rem; margin-bottom: 6px; }
 .comfort-action small { display: block; margin-top: 2px; font-size: .78rem; font-weight: 800; color: var(--warm); }
-.comfort-action.workout { background: var(--warm-soft); border-color: rgba(155,62,43,.2); }
+.comfort-action.cold { background: var(--blue-soft); border-color: rgba(47,111,155,.18); }
+.comfort-action.hot { background: var(--warm-soft); border-color: rgba(155,62,43,.18); }
+.comfort-action.neutral { grid-column: 1 / -1; background: var(--green-soft); border-color: rgba(39,104,79,.18); }
+.comfort-action.workout { grid-column: 1 / -1; background: var(--warm-soft); border-color: rgba(155,62,43,.2); }
 .comfort-action:hover { transform: translateY(-1px); border-color: rgba(39,104,79,.4); }
 .comfort-action:disabled { color: #aaa6a0; background: #eeece8; border-color: #dfdcd6; opacity: .58; cursor: not-allowed; filter: grayscale(1); transform: none; }
 .feelings.unavailable { opacity: .82; }

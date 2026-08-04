@@ -219,11 +219,11 @@ function roomCard(room) {
     </div>
     <p class="feeling-label${hasRemote ? "" : " unavailable"}">${hasRemote ? "你現在需要什麼？" : "請先新增遙控器，才能回報冷熱"}</p>
     <div class="feelings${hasRemote ? "" : " unavailable"}">
-      <button class="comfort-action feeling" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
-      <button class="comfort-action feeling" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
-      <button class="comfort-action feeling" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
-      <button class="comfort-action feeling" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
-      <button class="comfort-action feeling" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
+      <button class="comfort-action feeling cold" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
+      <button class="comfort-action feeling hot" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
+      <button class="comfort-action feeling cold" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
+      <button class="comfort-action feeling hot" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
+      <button class="comfort-action feeling neutral" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
       <button class="comfort-action workout" ${isOn ? "" : "disabled"}><span>🏃</span>運動後<small>降溫 30 分</small></button>
     </div>
     <div class="presence-row">
@@ -1451,5 +1451,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=36").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=37").then((registration) => registration.update()).catch(() => {});
 }
