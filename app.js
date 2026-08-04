@@ -35,8 +35,9 @@ function showAuth(mode) {
   $("#handoff-created").classList.toggle("hidden", mode !== "handoff-created");
   if (mode === "pair") {
     const pending = cloud.pendingLogin();
-    if (!pending) return showAuth("login");
-    $("#pair-email").textContent = pending.email;
+    $("#pair-copy").textContent = pending
+      ? `登入信已寄到 ${pending.email}。點信中的連結後，Safari 會顯示配對碼；複製後回到這裡貼上。`
+      : "輸入這台裝置的一次性配對碼。配對成功後，MyAmbi 會在主畫面 App 保持登入。";
     window.setTimeout(() => $("#pair-code").focus(), 50);
   }
 }
@@ -193,6 +194,9 @@ function roomCard(room) {
   const firstQueuePosition = roomQueue.length
     ? state.queue.findIndex((command) => command.id === roomQueue[0].id) + 1
     : 0;
+  const roomPresence = (state.status?.presence ?? []).filter((presence) => presence.room_id === room.id);
+  const mePresent = roomPresence.some((presence) => presence.user_id === state.user?.id);
+  const presenceNames = roomPresence.map((presence) => presence.display_name).join("、");
   article.innerHTML = `
     <div class="room-head"><h2></h2><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
@@ -208,6 +212,10 @@ function roomCard(room) {
       <button class="feeling" data-feeling="0"><span>😌</span>剛好</button>
       <button class="feeling" data-feeling="1"><span>😓</span>有點熱</button>
       <button class="feeling" data-feeling="2"><span>🥵</span>太熱</button>
+    </div>
+    <div class="presence-row">
+      <span>${presenceNames ? `目前在房：${presenceNames}` : "尚未確認誰在房"}</span>
+      <button class="room-action ${mePresent ? "presence-leave" : "presence-arrive"}">${mePresent ? "我離開了" : "我在這裡"}</button>
     </div>
     <div class="room-actions">
       <button class="room-action workout" ${isOn ? "" : "disabled"}>運動後降溫 30 分</button>
@@ -251,6 +259,12 @@ roomGrid.addEventListener("click", async (event) => {
         : "已恢復 MyAmbi 自動控制");
     } else if (event.target.matches(".history")) {
       await showHistory(room);
+    } else if (event.target.matches(".presence-arrive, .presence-leave")) {
+      const present = event.target.matches(".presence-arrive");
+      const result = await cloud.function("presence", { room_id: roomId, present });
+      showToast(present
+        ? `已登記在房；到 ${new Date(result.expires_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })} 前有效`
+        : "已登記離開，後續不再以你的即時偏好為主");
     } else if (event.target.matches(".auto-toggle")) {
       await cloud.function("automation", { room_id: roomId, enabled: !room.automation_enabled });
       showToast(room.automation_enabled ? "已暫停自動控制" : "已啟用自動控制");
@@ -797,8 +811,6 @@ $("#pair-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
   try {
     $("#pair-error").classList.add("hidden");
-    const pending = cloud.pendingLogin();
-    if (!pending) throw new Error("登入流程已過期，請重新寄送");
     const code = new FormData(event.currentTarget).get("code");
     await cloud.claimHandoff(code);
     event.currentTarget.reset();
@@ -824,6 +836,8 @@ $("#change-email").addEventListener("click", () => {
   localStorage.removeItem(cloud.pendingLoginKey);
   showAuth("login");
 });
+
+$("#use-pair-code").addEventListener("click", () => showAuth("pair"));
 
 $("#copy-handoff").addEventListener("click", async () => {
   const code = $("#handoff-code").dataset.code;
@@ -920,5 +934,11 @@ $("#logout-button").addEventListener("click", async () => {
 boot();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  let reloadingForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register("/sw.js?v=13").then((registration) => registration.update()).catch(() => {});
 }

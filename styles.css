@@ -52,6 +52,7 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .otp-input { text-align: center; text-transform: uppercase; font-size: 1.25rem; font-weight: 850; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
 .auth-links { display: flex; justify-content: center; gap: 12px; margin-top: 12px; }
 .auth-links .text-button { font-size: .82rem; font-weight: 750; }
+.pair-entry-button { display: block; margin: 12px auto 0; border: 0; background: transparent; color: var(--green); padding: 8px; font-size: .82rem; font-weight: 800; }
 .handoff-code { display: block; width: 100%; border: 0; border-radius: 16px; margin: 24px 0 14px; padding: 20px 10px; background: var(--green-soft); color: var(--green); font-size: clamp(1.4rem, 6vw, 2rem); font-weight: 900; letter-spacing: .08em; }
 
 .topbar { height: 58px; display: flex; align-items: center; justify-content: space-between; margin-bottom: clamp(40px, 8vw, 86px); }
@@ -90,6 +91,8 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .feeling:hover { transform: translateY(-1px); border-color: rgba(39,104,79,.4); }
 .room-actions { display: flex; gap: 7px; margin-top: 8px; }
 .room-action { flex: 1; border: 0; background: transparent; color: var(--blue); font-size: .78rem; padding: 8px 4px; font-weight: 750; }
+.presence-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; padding: 8px 10px; border-radius: 12px; background: var(--green-soft); color: var(--green); font-size: .72rem; font-weight: 800; }
+.presence-row .room-action { flex: none; color: var(--green); padding: 4px 2px; }
 .override-note { font-size: .75rem; color: var(--warm); font-weight: 800; margin-top: 8px; text-align: center; }
 .schedule-note, .queue-note, .safe-note { font-size: .73rem; font-weight: 800; margin-top: 7px; text-align: center; }
 .schedule-note { color: var(--green); }

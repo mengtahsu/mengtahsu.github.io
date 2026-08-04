@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=13">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -42,13 +42,14 @@
         <p>第一次在這台 iPhone 登入時，我們會寄安全連結。Safari 會顯示一組一次性裝置配對碼；貼回主畫面版 MyAmbi 後，之後會自動保持登入。</p>
         <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
         <button class="primary" type="submit">寄一次性登入信</button>
+        <button id="use-pair-code" class="pair-entry-button" type="button">我已經有裝置配對碼</button>
         <p id="auth-error" class="error-note hidden"></p>
       </form>
 
       <form id="pair-form" class="panel hidden">
         <p class="eyebrow">只需配對這台裝置一次</p>
         <h2>輸入裝置配對碼</h2>
-        <p>登入信已寄到 <strong id="pair-email"></strong>。點信中的連結後，Safari 會顯示配對碼；複製後回到這裡貼上。</p>
+        <p id="pair-copy">輸入這台裝置的一次性配對碼。配對成功後，MyAmbi 會在主畫面 App 保持登入。</p>
         <label>裝置配對碼
           <input id="pair-code" name="code" class="otp-input" inputmode="text" autocomplete="one-time-code" maxlength="14" required placeholder="ABCD-EFGH-JKLM">
         </label>
@@ -204,8 +205,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js"></script>
-  <script src="/cloud-client.js"></script>
-  <script src="/app.js" defer></script>
+  <script src="/config.js?v=13"></script>
+  <script src="/cloud-client.js?v=13"></script>
+  <script src="/app.js?v=13" defer></script>
 </body>
 </html>
