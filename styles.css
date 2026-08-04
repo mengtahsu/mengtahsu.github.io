@@ -164,6 +164,10 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .location-row label { margin: 0; }
 .location-room { display: grid; gap: 3px; align-self: center; }
 .location-room span, .source-note { color: var(--muted); font-size: .72rem; }
+.air-quality-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 12px 0 2px; }
+.air-quality-row span { display: grid; gap: 2px; padding: 10px 12px; border-radius: 13px; background: #eef5f1; }
+.air-quality-row small { color: var(--muted); font-size: .68rem; font-weight: 750; }
+.air-quality-row b { color: var(--green); font-size: 1rem; }
 .learning-list, .alerts-list { display: grid; gap: 10px; margin-top: 20px; }
 .sleep-status { display: grid; grid-template-columns: 1fr auto; gap: 10px 20px; align-items: center; margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .sleep-status-main, .sleep-status-count { display: grid; gap: 3px; }
@@ -203,6 +207,10 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-summary > div { padding: 9px 10px; border-radius: 11px; background: #f5f2ec; }
 .chart-summary small { display: block; color: var(--muted); font-size: .68rem; }
 .chart-summary strong { display: block; margin-top: 2px; font-size: .95rem; }
+.air-quality-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; margin: 12px 0; }
+.air-quality-summary > div { padding: 10px; border-radius: 11px; background: #eef5f1; }
+.air-quality-summary small { display: block; color: var(--muted); font-size: .68rem; }
+.air-quality-summary strong { display: block; margin-top: 2px; font-size: .95rem; }
 .chart-series-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .chart-series-controls button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: transparent; color: var(--muted); font-size: .76rem; font-weight: 800; }
 .chart-series-controls button.active { background: var(--green-soft); border-color: rgba(39,104,79,.32); color: var(--green); }
@@ -216,6 +224,8 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series.outdoor { stroke: var(--warm); }
 .chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
 .chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
+.chart-series.tvoc { stroke: #bf713f; }
+.chart-series.co2 { stroke: #3d7896; }
 .chart-power-on { fill: rgba(47,111,155,.28); }
 .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .92rem; margin-top: 10px; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }
@@ -225,6 +235,8 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-legend i.target { color: var(--blue); }
 .chart-legend i.humidity { color: #8470a8; }
 .chart-legend i.power { color: rgba(47,111,155,.65); height: 6px; }
+.chart-legend i.tvoc { color: #bf713f; }
+.chart-legend i.co2 { color: #3d7896; }
 .history-empty { color: var(--muted); font-size: 1rem; }
 .history-item { display: grid; grid-template-columns: 102px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .history-time { color: var(--muted); font-size: .9rem; line-height: 1.4; }
@@ -267,6 +279,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .chart-heading { display: grid; }
   .chart-toolbar { align-items: start; flex-direction: column; }
   .chart-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .air-quality-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .chart-tools { width: 100%; }
   .chart-tools button:last-child { margin-left: auto; }
   .brand-block h1 { font-size: 4rem; }

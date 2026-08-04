@@ -46,6 +46,11 @@ function isAdmin() {
   return ["owner", "admin"].includes(state.status?.role);
 }
 
+function sensiboModelLabel(model) {
+  const labels = { air: "Sensibo Air", airq: "Sensibo Air Pro", sky: "Sensibo Sky" };
+  return labels[String(model || "").toLowerCase()] || "Sensibo";
+}
+
 function applyRole() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !isAdmin()));
   document.querySelectorAll(".admin-copy").forEach((el) => el.classList.toggle("hidden", !isAdmin()));
@@ -174,6 +179,13 @@ function roomCard(room) {
   article.dataset.roomId = room.id;
   const hasRemote = Boolean(room.primary_remote_id && room.remote_provider);
   const isOn = Boolean(room.is_on);
+  const tvoc = numericValue(room.tvoc);
+  const co2 = numericValue(room.co2);
+  const airQuality = tvoc === null && co2 === null ? "" : `
+    <div class="air-quality-row" aria-label="Sensibo Air Pro 空氣品質">
+      ${tvoc === null ? "" : `<span><small>TVOC</small><b>${displayNumber(tvoc)} ppb</b></span>`}
+      ${co2 === null ? "" : `<span><small>eCO₂（估算）</small><b>${displayNumber(co2)} ppm</b></span>`}
+    </div>`;
   const overrideTime = room.override_ends_at
     ? new Date(room.override_ends_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -194,6 +206,7 @@ function roomCard(room) {
     <div class="room-head"><h2></h2><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
     <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}<span>${room.mode || "—"}</span></div>
+    ${airQuality}
     <div class="target-row">
       <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
       <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
@@ -286,7 +299,7 @@ async function showHistory(room, days = 1) {
     ...feedback.map((item) => ({
       at: item.recorded_at,
       title: `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
-      detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 室外 ${displayNumber(item.snapshot?.outdoor_temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%`,
+      detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 室外 ${displayNumber(item.snapshot?.outdoor_temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%${numericValue(item.snapshot?.tvoc) === null ? "" : ` · TVOC ${displayNumber(item.snapshot.tvoc)} ppb`}${numericValue(item.snapshot?.co2) === null ? "" : ` · eCO₂ ${displayNumber(item.snapshot.co2)} ppm`}`,
     })),
     ...decisions.map((item) => ({
       at: item.decided_at,
@@ -328,8 +341,9 @@ function historyEventRows(events) {
 function renderHistoryContent() {
   const content = $("#history-content");
   const chart = climateChart(state.historyReadings, state.historyDays, state.historyZoom);
+  const airChart = airQualityChart(state.historyReadings, state.historyDays, state.historyZoom);
   const eventRows = historyEventRows(state.historyEvents);
-  content.replaceChildren(chart, ...eventRows);
+  content.replaceChildren(chart, ...(airChart ? [airChart] : []), ...eventRows);
   if (!state.historyEvents.length) {
     const empty = document.createElement("p");
     empty.className = "history-empty";
@@ -526,9 +540,99 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   return section;
 }
 
+function airQualityChart(rawReadings, days = 1, zoom = 1) {
+  const readings = rawReadings
+    .filter((row) => Number.isFinite(new Date(row.observed_at).getTime()) &&
+      (numericValue(row.tvoc) !== null || numericValue(row.co2) !== null))
+    .sort((a, b) => new Date(a.observed_at) - new Date(b.observed_at));
+  if (!readings.length) return null;
+
+  const section = document.createElement("section");
+  section.className = "climate-chart air-quality-chart";
+  const rangeLabel = days === 1 ? "24 小時" : `${days} 天`;
+  const heading = document.createElement("div"); heading.className = "chart-heading";
+  heading.innerHTML = `<strong>Air Pro 空氣品質</strong><span>最近 ${rangeLabel} · CO₂為TVOC感測器推估值</span>`;
+  section.append(heading);
+
+  const values = (key) => readings.map((row) => numericValue(row[key])).filter((value) => value !== null);
+  const tvocValues = values("tvoc"); const co2Values = values("co2");
+  const average = (items) => items.length ? items.reduce((sum, value) => sum + value, 0) / items.length : null;
+  const latestValue = (key) => {
+    for (let index = readings.length - 1; index >= 0; index -= 1) {
+      const value = numericValue(readings[index][key]); if (value !== null) return value;
+    }
+    return null;
+  };
+  const summary = document.createElement("div"); summary.className = "air-quality-summary";
+  [["目前 eCO₂", latestValue("co2"), " ppm"], ["平均 eCO₂", average(co2Values), " ppm"], ["目前 TVOC", latestValue("tvoc"), " ppb"], ["平均 TVOC", average(tvocValues), " ppb"]].forEach(([labelText, value, suffix]) => {
+    const item = document.createElement("div");
+    const label = document.createElement("small"); label.textContent = labelText;
+    const strong = document.createElement("strong"); strong.textContent = value === null ? "—" : `${Number(value).toFixed(0)}${suffix}`;
+    item.append(label, strong); summary.append(item);
+  });
+  section.append(summary);
+  if (readings.length < 2) return section;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 760 230"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Sensibo Air Pro TVOC與估算二氧化碳曲線");
+  const margin = { left: 58, right: 62, top: 20, bottom: 34 };
+  const plotWidth = 760 - margin.left - margin.right; const plotHeight = 230 - margin.top - margin.bottom;
+  const times = readings.map((row) => new Date(row.observed_at).getTime());
+  const start = Math.min(...times); const end = Math.max(...times); const span = Math.max(1, end - start);
+  const x = (at) => margin.left + (at - start) / span * plotWidth;
+  const tvocMax = Math.max(100, Math.ceil(Math.max(0, ...tvocValues) / 100) * 100);
+  const co2Min = Math.max(0, Math.floor(Math.min(...(co2Values.length ? co2Values : [0])) / 100) * 100);
+  const co2Max = Math.max(co2Min + 100, Math.ceil(Math.max(...(co2Values.length ? co2Values : [100])) / 100) * 100);
+  const yTvoc = (value) => margin.top + (tvocMax - value) / tvocMax * plotHeight;
+  const yCo2 = (value) => margin.top + (co2Max - value) / (co2Max - co2Min) * plotHeight;
+  const line = (x1, y1, x2, y2, className) => {
+    const item = document.createElementNS(svgNS, "line");
+    Object.entries({ x1, y1, x2, y2 }).forEach(([key, value]) => item.setAttribute(key, String(value)));
+    item.setAttribute("class", className); svg.append(item);
+  };
+  const label = (text, xValue, yValue, anchor = "end") => {
+    const item = document.createElementNS(svgNS, "text"); item.textContent = text;
+    item.setAttribute("x", String(xValue)); item.setAttribute("y", String(yValue));
+    item.setAttribute("text-anchor", anchor); item.setAttribute("class", "chart-axis-label"); svg.append(item);
+  };
+  for (let index = 0; index <= 4; index += 1) {
+    const y = margin.top + plotHeight * index / 4;
+    line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
+    label(`${Math.round(tvocMax * (1 - index / 4))} ppb`, margin.left - 7, y + 4);
+    label(`${Math.round(co2Max - (co2Max - co2Min) * index / 4)} ppm`, 760 - margin.right + 7, y + 4, "start");
+  }
+  const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
+  [0, 0.5, 1].forEach((position) => {
+    const at = start + span * position;
+    label(timeFormat.format(new Date(at)), x(at), 224, position === 0 ? "start" : position === 1 ? "middle" : "end");
+  });
+  const addPath = (key, y, className) => {
+    let data = ""; let drawing = false;
+    readings.forEach((row) => {
+      const value = numericValue(row[key]);
+      if (value === null) { drawing = false; return; }
+      data += `${drawing ? "L" : "M"}${x(new Date(row.observed_at).getTime()).toFixed(1)},${y(value).toFixed(1)} `; drawing = true;
+    });
+    if (!data) return;
+    const path = document.createElementNS(svgNS, "path"); path.setAttribute("d", data);
+    path.setAttribute("class", `chart-series ${className}`); svg.append(path);
+  };
+  addPath("tvoc", yTvoc, "tvoc"); addPath("co2", yCo2, "co2");
+  svg.style.width = `${Math.round(760 * zoom)}px`; svg.style.maxWidth = "none";
+  const viewport = document.createElement("div"); viewport.className = "chart-viewport"; viewport.append(svg); section.append(viewport);
+  const legend = document.createElement("div"); legend.className = "chart-legend";
+  [["tvoc", "TVOC（ppb）"], ["co2", "eCO₂估算（ppm）"]].forEach(([className, text]) => {
+    const item = document.createElement("span"); item.innerHTML = `<i class="${className}"></i>${text}`; legend.append(item);
+  });
+  section.append(legend);
+  return section;
+}
+
 function downloadHistoryCsv() {
   if (!state.historyRoom || !state.historyReadings.length) return showToast("目前沒有可下載的資料", true);
-  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "humidity", "outdoor_humidity", "is_on"];
+  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "humidity", "outdoor_humidity", "tvoc", "co2", "is_on"];
   const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
   const csv = [columns.join(","), ...state.historyReadings.map((row) => columns.map((key) => escapeCsv(row[key])).join(","))].join("\n");
   const link = document.createElement("a");
@@ -829,7 +933,7 @@ function renderRoomManagement() {
     for (const remote of room.remotes ?? []) {
       const remoteRow = document.createElement("div"); remoteRow.className = "remote-row";
       const remoteText = document.createElement("span");
-      remoteText.textContent = `${remote.name} · ${remote.provider === "sensibo" ? "Sensibo" : "虛擬"}${remote.is_primary ? " · 主要" : ""}`;
+      remoteText.textContent = `${remote.name} · ${remote.provider === "sensibo" ? sensiboModelLabel(remote.product_model) : "虛擬"}${remote.is_primary ? " · 主要" : ""}`;
       const remove = document.createElement("button"); remove.type = "button";
       remove.className = "remote-delete-button"; remove.dataset.remoteId = remote.id;
       remove.dataset.remoteName = remote.name; remove.textContent = "移除";
@@ -848,7 +952,7 @@ function renderRoomManagement() {
       select.setAttribute("aria-label", `${room.name} 的 Sensibo 遙控器`);
       for (const device of state.sensiboDevices) {
         const option = document.createElement("option"); option.value = device.deviceId;
-        option.textContent = device.name; select.append(option);
+        option.textContent = `${device.name} · ${sensiboModelLabel(device.productModel)}`; select.append(option);
       }
       const add = document.createElement("button"); add.type = "button";
       add.className = "secondary add-sensibo-remote"; add.dataset.roomId = room.id;
@@ -1264,5 +1368,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=29").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=30").then((registration) => registration.update()).catch(() => {});
 }
