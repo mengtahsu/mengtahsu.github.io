@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=28">
+  <link rel="stylesheet" href="/styles.css?v=29">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -126,6 +126,13 @@
           </section>
 
           <section class="panel wide">
+            <span class="step">睡眠情境</span>
+            <h2>睡眠階段資料</h2>
+            <p>MyAmbi 目前以時間推估；匯入 Garmin／Apple Health 後，會學習你過去多晚在各時段的實際睡眠階段。網頁 App 無法直接讀取 iPhone HealthKit；Garmin 自動同步也需通過 Garmin Health API 申請。</p>
+            <div id="sleep-status" class="sleep-status"></div>
+          </section>
+
+          <section class="panel wide">
             <span class="step">自動巡檢</span>
             <div class="panel-title-row">
               <div><h2>系統健康與故障中心</h2><p>每十分鐘檢查資料中斷、命令失敗、Sensibo 與 queue 狀態。</p></div>
@@ -220,6 +227,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/config.js?v=28"></script>
   <script src="/cloud-client.js?v=28"></script>
-  <script src="/app.js?v=28" defer></script>
+  <script src="/app.js?v=29" defer></script>
 </body>
 </html>

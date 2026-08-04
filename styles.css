@@ -165,6 +165,12 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .location-room { display: grid; gap: 3px; align-self: center; }
 .location-room span, .source-note { color: var(--muted); font-size: .72rem; }
 .learning-list, .alerts-list { display: grid; gap: 10px; margin-top: 20px; }
+.sleep-status { display: grid; grid-template-columns: 1fr auto; gap: 10px 20px; align-items: center; margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
+.sleep-status-main, .sleep-status-count { display: grid; gap: 3px; }
+.sleep-status-main span, .sleep-status-count span { color: var(--muted); font-size: .76rem; }
+.sleep-status-count { text-align: right; }
+.sleep-status-count strong { font-size: 1.55rem; }
+.sleep-status p { grid-column: 1/-1; margin: 0; font-size: .8rem; }
 .learning-room { display: grid; grid-template-columns: minmax(180px,1fr) auto auto auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .learning-room > div:first-child { display: grid; gap: 3px; }
 .learning-room span, .learning-room .confidence { color: var(--muted); font-size: .76rem; }
@@ -193,6 +199,13 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-ranges, .chart-tools { display: flex; align-items: center; gap: 5px; }
 .chart-toolbar button { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; background: #f7f3ec; color: var(--muted); font-size: .9rem; font-weight: 800; }
 .chart-toolbar button.active { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+.chart-summary { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 7px; margin: 12px 0; }
+.chart-summary > div { padding: 9px 10px; border-radius: 11px; background: #f5f2ec; }
+.chart-summary small { display: block; color: var(--muted); font-size: .68rem; }
+.chart-summary strong { display: block; margin-top: 2px; font-size: .95rem; }
+.chart-series-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.chart-series-controls button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: transparent; color: var(--muted); font-size: .76rem; font-weight: 800; }
+.chart-series-controls button.active { background: var(--green-soft); border-color: rgba(39,104,79,.32); color: var(--green); }
 .chart-tools span { min-width: 48px; text-align: center; color: var(--muted); font-size: .88rem; }
 .chart-viewport { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -203,6 +216,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series.outdoor { stroke: var(--warm); }
 .chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
 .chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
+.chart-power-on { fill: rgba(47,111,155,.28); }
 .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .92rem; margin-top: 10px; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }
 .chart-legend i { width: 16px; height: 3px; border-radius: 99px; background: currentColor; }
@@ -210,6 +224,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-legend i.outdoor { color: var(--warm); }
 .chart-legend i.target { color: var(--blue); }
 .chart-legend i.humidity { color: #8470a8; }
+.chart-legend i.power { color: rgba(47,111,155,.65); height: 6px; }
 .history-empty { color: var(--muted); font-size: 1rem; }
 .history-item { display: grid; grid-template-columns: 102px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .history-time { color: var(--muted); font-size: .9rem; line-height: 1.4; }
@@ -251,12 +266,15 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .location-row { grid-template-columns: 1fr; }
   .chart-heading { display: grid; }
   .chart-toolbar { align-items: start; flex-direction: column; }
+  .chart-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .chart-tools { width: 100%; }
   .chart-tools button:last-child { margin-left: auto; }
   .brand-block h1 { font-size: 4rem; }
   .panel-title-row { display: grid; }
   .panel-title-row .secondary { justify-self: start; }
   .learning-room { grid-template-columns: 1fr auto; }
+  .sleep-status { grid-template-columns: 1fr; }
+  .sleep-status-count { text-align: left; }
   .learning-room > div:first-child { grid-column: 1/-1; }
   .learning-room .confidence { grid-column: 1/-1; justify-self: start; }
   .app-nav { position: fixed; z-index: 8; display: grid; grid-template-columns: 1fr 1fr; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); padding: 6px; border: 1px solid rgba(255,255,255,.9); border-radius: 20px; background: rgba(250,248,243,.9); box-shadow: 0 14px 45px rgba(20,30,25,.18); backdrop-filter: blur(18px); }

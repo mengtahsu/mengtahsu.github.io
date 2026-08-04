@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
+const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], sleep: null, allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, historySeries: { temperature: true, outdoor_temperature: true, target_temperature: true, humidity: true, power: true }, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -186,7 +186,10 @@ function roomCard(room) {
     : 0;
   const roomPresence = (state.status?.presence ?? []).filter((presence) => presence.room_id === room.id);
   const mePresent = roomPresence.some((presence) => presence.user_id === state.user?.id);
-  const presenceNames = roomPresence.map((presence) => presence.display_name).join("、");
+  const presenceNames = roomPresence.map((presence) => {
+    const expires = new Date(presence.expires_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+    return `${presence.display_name}（至 ${expires}）`;
+  }).join("、");
   article.innerHTML = `
     <div class="room-head"><h2></h2><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
@@ -370,6 +373,44 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     return section;
   }
 
+  const summaryValues = (key) => readings.map((row) => numericValue(row[key])).filter((value) => value !== null);
+  const indoorSummary = summaryValues("temperature");
+  const outdoorSummary = summaryValues("outdoor_temperature");
+  const humiditySummary = summaryValues("humidity");
+  const average = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  const summary = document.createElement("div");
+  summary.className = "chart-summary";
+  const summaryItems = [
+    ["室內平均", average(indoorSummary), "°"],
+    ["室內範圍", indoorSummary.length ? `${Math.min(...indoorSummary).toFixed(1)}–${Math.max(...indoorSummary).toFixed(1)}` : null, "°"],
+    ["室外平均", average(outdoorSummary), "°"],
+    ["平均濕度", average(humiditySummary), "%"],
+    ["冷氣運轉", readings.length ? readings.filter((row) => row.is_on === true).length / readings.length * 100 : null, "%"],
+    ["資料點", readings.length, " 筆"],
+  ];
+  for (const [labelText, rawValue, suffix] of summaryItems) {
+    const item = document.createElement("div");
+    const label = document.createElement("small"); label.textContent = labelText;
+    const value = document.createElement("strong");
+    value.textContent = rawValue === null ? "—" : `${typeof rawValue === "number" ? rawValue.toFixed(labelText === "資料點" ? 0 : 1) : rawValue}${suffix}`;
+    item.append(label, value); summary.append(item);
+  }
+  section.append(summary);
+
+  const seriesControls = document.createElement("div");
+  seriesControls.className = "chart-series-controls";
+  const seriesOptions = [
+    ["temperature", "室內"], ["outdoor_temperature", "室外"],
+    ["target_temperature", "冷氣設定"], ["humidity", "濕度"],
+    ["power", "運轉狀態"],
+  ];
+  for (const [key, labelText] of seriesOptions) {
+    const button = document.createElement("button"); button.type = "button";
+    button.dataset.chartSeries = key; button.className = state.historySeries[key] ? "active" : "";
+    button.textContent = labelText; seriesControls.append(button);
+  }
+  section.append(seriesControls);
+
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", "0 0 760 300");
@@ -428,6 +469,21 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     label(timeFormat.format(new Date(at)), x(at), 294, position === 0 ? "start" : position === 1 ? "middle" : "end");
   });
 
+  if (state.historySeries.power) {
+    readings.forEach((row, index) => {
+      if (row.is_on !== true) return;
+      const nextAt = index + 1 < readings.length
+        ? new Date(readings[index + 1].observed_at).getTime()
+        : new Date(row.observed_at).getTime() + Math.min(15 * 60_000, timeSpan / Math.max(1, readings.length - 1));
+      const rect = document.createElementNS(svgNS, "rect");
+      rect.setAttribute("x", String(x(new Date(row.observed_at).getTime())));
+      rect.setAttribute("y", String(margin.top + plotHeight - 6));
+      rect.setAttribute("width", String(Math.max(1, x(Math.min(end, nextAt)) - x(new Date(row.observed_at).getTime()))));
+      rect.setAttribute("height", "6"); rect.setAttribute("class", "chart-power-on");
+      svg.append(rect);
+    });
+  }
+
   const addPath = (key, y, className) => {
     let pathData = "";
     let drawing = false;
@@ -446,10 +502,10 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     path.setAttribute("class", `chart-series ${className}`);
     svg.append(path);
   };
-  addPath("temperature", yTemperature, "indoor");
-  addPath("outdoor_temperature", yTemperature, "outdoor");
-  addPath("target_temperature", yTemperature, "target");
-  addPath("humidity", yHumidity, "humidity");
+  if (state.historySeries.temperature) addPath("temperature", yTemperature, "indoor");
+  if (state.historySeries.outdoor_temperature) addPath("outdoor_temperature", yTemperature, "outdoor");
+  if (state.historySeries.target_temperature) addPath("target_temperature", yTemperature, "target");
+  if (state.historySeries.humidity) addPath("humidity", yHumidity, "humidity");
   // Keep the SVG close to its 760-unit viewBox width so axis text does not
   // shrink to unreadable sizes on an iPhone. The viewport scrolls sideways.
   svg.style.width = `${Math.round(760 * zoom)}px`;
@@ -461,7 +517,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
 
   const legend = document.createElement("div");
   legend.className = "chart-legend";
-  [["indoor", "室內溫度"], ["outdoor", "室外溫度"], ["target", "冷氣設定"], ["humidity", "室內濕度"]].forEach(([className, text]) => {
+  [["indoor", "室內溫度", "temperature"], ["outdoor", "室外溫度", "outdoor_temperature"], ["target", "冷氣設定", "target_temperature"], ["humidity", "室內濕度", "humidity"], ["power", "冷氣運轉", "power"]].filter(([, , key]) => state.historySeries[key]).forEach(([className, text]) => {
     const item = document.createElement("span");
     item.innerHTML = `<i class="${className}"></i>${text}`;
     legend.append(item);
@@ -507,15 +563,18 @@ async function showSettings() {
 }
 
 async function loadSettings() {
-  const [choices, insights] = await Promise.all([
+  const [choices, insights, sleep] = await Promise.all([
     cloud.function("room-choices", {}, "GET"),
     cloud.function("learning-insights", {}, "GET"),
+    cloud.function("sleep-status", {}, "GET"),
   ]);
   state.roomChoices = choices.rooms;
   state.learning = insights.rooms;
   state.learningContext = insights;
+  state.sleep = sleep;
   renderPersonalRoomChoices();
   renderLearning();
+  renderSleepStatus();
   renderAlerts();
   if (!isAdmin()) return;
   const result = await cloud.function("admin-state", {}, "GET");
@@ -543,6 +602,22 @@ async function loadSettings() {
   }
 }
 
+function renderSleepStatus() {
+  const content = $("#sleep-status");
+  if (!content || !state.sleep) return;
+  const estimate = state.sleep.current_estimate || state.sleep.current_clock_estimate;
+  const labels = { clock: "目前依台北時間推估", imported: "已匯入睡眠階段", apple_health: "已匯入 Apple Health 睡眠", garmin_health: "已匯入 Garmin 睡眠資料" };
+  const mode = labels[state.sleep.connection_mode] || labels.clock;
+  const latest = state.sleep.latest_sample
+    ? `最近資料：${new Date(state.sleep.latest_sample.starts_at).toLocaleString("zh-TW")} · ${state.sleep.latest_sample.stage}`
+    : "目前沒有穿戴裝置睡眠階段資料";
+  content.innerHTML = `
+    <div class="sleep-status-main"><strong>${mode}</strong><span>${estimate.label} · 基準 ${estimate.baseline}°</span></div>
+    <div class="sleep-status-count"><strong>${Number(state.sleep.sample_count || 0)}</strong><span>近 45 天階段樣本</span></div>
+    <p>${latest}</p>
+    <p>Garmin 的睡眠資料通常在手錶同步後才完成判讀；MyAmbi 會用過去多晚的階段分布改善今晚的時間推估，不會假裝它是即時深睡偵測。</p>`;
+}
+
 function renderLearning() {
   const list = $("#learning-list");
   const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
@@ -558,11 +633,14 @@ function renderLearning() {
     thermalRow.className = "learning-room thermal-room";
     const cooling = numericValue(thermal.cooling_rate_per_hour);
     const warming = numericValue(thermal.warming_rate_per_hour);
+    const passiveWarming = numericValue(thermal.passive_warming_rate_per_hour);
+    const coolingGap = numericValue(thermal.cooling_rate_per_degree_gap);
+    const outdoorLeak = numericValue(thermal.outdoor_leak_rate_per_degree);
     thermalRow.innerHTML = `
-      <div><strong></strong><span>房間熱力模型 · 依實測室溫變化與相近室外天氣學習</span></div>
+      <div><strong></strong><span>房間熱力模型 · 分開學習冷氣運轉降溫、關機回溫、設定溫差與室外熱滲入</span><span>${coolingGap === null ? "設定溫差係數蒐集中" : `每 1° 室溫／設定差帶來 ${coolingGap.toFixed(2)}°/時降溫`} · ${outdoorLeak === null ? "室外熱滲入係數蒐集中" : `每 1° 室外／室內差帶來 ${outdoorLeak.toFixed(2)}°/時回溫`}</span></div>
       <div class="learned-temperature"><small>降溫速度</small>${cooling === null ? "蒐集中" : `${cooling.toFixed(2)}°/時`}</div>
-      <div class="learned-temperature"><small>升溫速度</small>${warming === null ? "蒐集中" : `${warming.toFixed(2)}°/時`}</div>
-      <div class="confidence ${cooling !== null && warming !== null ? "high" : cooling !== null || warming !== null ? "medium" : ""}">降溫 ${Number(thermal.cooling_samples || 0)} 段 · 升溫 ${Number(thermal.warming_samples || 0)} 段</div>`;
+      <div class="learned-temperature"><small>關機回溫</small>${passiveWarming === null ? (warming === null ? "蒐集中" : `${warming.toFixed(2)}°/時`) : `${passiveWarming.toFixed(2)}°/時`}</div>
+      <div class="confidence ${cooling !== null && (passiveWarming !== null || warming !== null) ? "high" : cooling !== null || warming !== null ? "medium" : ""}">降溫 ${Number(thermal.cooling_samples || 0)} 段 · 全部升溫 ${Number(thermal.warming_samples || 0)} 段 · 關機 ${Number(thermal.passive_warming_samples || 0)} 段</div>`;
     thermalRow.querySelector("strong").textContent = room.name;
     rows.push(thermalRow);
     const useful = room.buckets.filter((bucket) => bucket.samples > 0);
@@ -1163,6 +1241,13 @@ $("#history-content").addEventListener("click", async (event) => {
     renderHistoryContent();
     return;
   }
+  const series = event.target.closest("[data-chart-series]");
+  if (series) {
+    const key = series.dataset.chartSeries;
+    state.historySeries[key] = !state.historySeries[key];
+    renderHistoryContent();
+    return;
+  }
   if (event.target.closest("[data-chart-download]")) downloadHistoryCsv();
 });
 $("#logout-button").addEventListener("click", async () => {
@@ -1179,5 +1264,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=28").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=29").then((registration) => registration.update()).catch(() => {});
 }
