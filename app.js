@@ -812,13 +812,21 @@ $("#request-password-reset").addEventListener("click", async (event) => {
 $("#password-reset-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
   try {
+    $("#password-reset-error").classList.add("hidden");
     const values = Object.fromEntries(new FormData(event.currentTarget));
     if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
     await cloud.updatePassword(values.password);
+    await cloud.registerTrustedDevice();
+    cloud.callbackType = null;
+    history.replaceState({}, document.title, `${location.pathname}#rooms`);
     event.currentTarget.reset();
-    showAuth("password-set-done");
+    showToast("密碼已設定，正在回到你的家");
+    await boot();
   } catch (error) {
-    $("#password-reset-error").textContent = error.message;
+    const message = error instanceof Error && error.message && error.message !== "null"
+      ? error.message
+      : "密碼可能已儲存；請回到登入頁，用新密碼登入。";
+    $("#password-reset-error").textContent = message;
     $("#password-reset-error").classList.remove("hidden");
   } finally { setBusy(button, false); }
 });
@@ -925,5 +933,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=18").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=19").then((registration) => registration.update()).catch(() => {});
 }
