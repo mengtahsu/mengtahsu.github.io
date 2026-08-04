@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, refreshTimer: null };
+const state = { status: null, user: null, households: [], rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -260,12 +260,12 @@ roomGrid.addEventListener("click", async (event) => {
   finally { setBusy(event.target, false); }
 });
 
-async function showHistory(room) {
+async function showHistory(room, days = 1) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
-  const [feedback, decisions, readings] = await Promise.all([
+  const [feedback, decisions, climate] = await Promise.all([
     cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
     cloud.rest("control_decisions", `select=id,decided_at,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
-    cloud.rest("climate_readings", `select=*&room_id=${roomFilter}&order=observed_at.desc&limit=1000`),
+    cloud.function("climate-history", { room_id: room.id, days }),
   ]);
   const userIds = [...new Set(feedback.map((item) => item.user_id).filter(Boolean))];
   const profiles = userIds.length
@@ -297,8 +297,16 @@ async function showHistory(room) {
       detail: item.reason,
     })),
   ].sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 50);
-  const content = $("#history-content");
-  const eventRows = events.map((item) => {
+  state.historyRoom = room;
+  state.historyReadings = climate.readings ?? [];
+  state.historyEvents = events;
+  state.historyDays = Number(climate.days ?? days);
+  renderHistoryContent();
+  if (!$("#history-dialog").open) $("#history-dialog").showModal();
+}
+
+function historyEventRows(events) {
+  return events.map((item) => {
     const row = document.createElement("div"); row.className = "history-item";
     const time = document.createElement("div"); time.className = "history-time";
     time.textContent = new Date(item.at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -307,24 +315,46 @@ async function showHistory(room) {
     const detail = document.createElement("div"); detail.className = "history-detail"; detail.textContent = item.detail;
     body.append(title, detail); row.append(time, body); return row;
   });
-  const chart = climateChart(readings);
+
+}
+
+function renderHistoryContent() {
+  const content = $("#history-content");
+  const chart = climateChart(state.historyReadings, state.historyDays, state.historyZoom);
+  const eventRows = historyEventRows(state.historyEvents);
   content.replaceChildren(chart, ...eventRows);
-  if (!events.length) {
+  if (!state.historyEvents.length) {
     const empty = document.createElement("p");
     empty.className = "history-empty";
     empty.textContent = "還沒有操作或體感紀錄。";
     content.append(empty);
   }
-  $("#history-dialog").showModal();
 }
 
-function climateChart(rawReadings) {
+function climateChart(rawReadings, days = 1, zoom = 1) {
   const section = document.createElement("section");
   section.className = "climate-chart";
   const heading = document.createElement("div");
   heading.className = "chart-heading";
-  heading.innerHTML = "<strong>房間環境曲線</strong><span>最近約 3 天 · 左軸 °C，右軸濕度</span>";
+  const rangeLabel = days === 1 ? "24 小時" : `${days} 天`;
+  heading.innerHTML = `<strong>房間環境曲線</strong><span>最近 ${rangeLabel} · 左軸 °C，右軸濕度</span>`;
   section.append(heading);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "chart-toolbar";
+  toolbar.innerHTML = `
+    <div class="chart-ranges" aria-label="圖表時間範圍">
+      <button type="button" data-history-days="1" class="${days === 1 ? "active" : ""}">24h</button>
+      <button type="button" data-history-days="7" class="${days === 7 ? "active" : ""}">7 天</button>
+      <button type="button" data-history-days="30" class="${days === 30 ? "active" : ""}">30 天</button>
+    </div>
+    <div class="chart-tools">
+      <button type="button" data-chart-zoom="out" aria-label="縮小圖表">−</button>
+      <span>${Math.round(zoom * 100)}%</span>
+      <button type="button" data-chart-zoom="in" aria-label="放大圖表">＋</button>
+      <button type="button" data-chart-download>下載 CSV</button>
+    </div>`;
+  section.append(toolbar);
 
   const readings = rawReadings
     .filter((row) => Number.isFinite(new Date(row.observed_at).getTime()))
@@ -416,7 +446,11 @@ function climateChart(rawReadings) {
   addPath("outdoor_temperature", yTemperature, "outdoor");
   addPath("target_temperature", yTemperature, "target");
   addPath("humidity", yHumidity, "humidity");
-  section.append(svg);
+  svg.style.width = `${Math.round(zoom * 100)}%`;
+  const viewport = document.createElement("div");
+  viewport.className = "chart-viewport";
+  viewport.append(svg);
+  section.append(viewport);
 
   const legend = document.createElement("div");
   legend.className = "chart-legend";
@@ -427,6 +461,18 @@ function climateChart(rawReadings) {
   });
   section.append(legend);
   return section;
+}
+
+function downloadHistoryCsv() {
+  if (!state.historyRoom || !state.historyReadings.length) return showToast("目前沒有可下載的資料", true);
+  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "humidity", "outdoor_humidity", "is_on"];
+  const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const csv = [columns.join(","), ...state.historyReadings.map((row) => columns.map((key) => escapeCsv(row[key])).join(","))].join("\n");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" }));
+  link.download = `MyAmbi-${state.historyRoom.name}-${state.historyDays}d.csv`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 function updateNavigation(view) {
@@ -485,6 +531,18 @@ function renderLearning() {
   const confidence = { low: "資料不足", medium: "開始穩定", high: "可信度高" };
   const rows = [];
   for (const room of state.learning ?? []) {
+    const thermal = room.thermal_model ?? {};
+    const thermalRow = document.createElement("div");
+    thermalRow.className = "learning-room thermal-room";
+    const cooling = numericValue(thermal.cooling_rate_per_hour);
+    const warming = numericValue(thermal.warming_rate_per_hour);
+    thermalRow.innerHTML = `
+      <div><strong></strong><span>房間熱力模型 · 依實測室溫變化與相近室外天氣學習</span></div>
+      <div class="learned-temperature"><small>降溫速度</small>${cooling === null ? "蒐集中" : `${cooling.toFixed(2)}°/時`}</div>
+      <div class="learned-temperature"><small>升溫速度</small>${warming === null ? "蒐集中" : `${warming.toFixed(2)}°/時`}</div>
+      <div class="confidence ${cooling !== null && warming !== null ? "high" : cooling !== null || warming !== null ? "medium" : ""}">降溫 ${Number(thermal.cooling_samples || 0)} 段 · 升溫 ${Number(thermal.warming_samples || 0)} 段</div>`;
+    thermalRow.querySelector("strong").textContent = room.name;
+    rows.push(thermalRow);
     const useful = room.buckets.filter((bucket) => bucket.samples > 0);
     if (!useful.length) {
       const empty = document.createElement("div");
@@ -834,6 +892,25 @@ $("#rooms-nav").addEventListener("click", () => showRooms());
 $("#open-settings-empty").addEventListener("click", showSettings);
 $("#back-button").addEventListener("click", () => showRooms());
 $("#close-history").addEventListener("click", () => $("#history-dialog").close());
+$("#history-content").addEventListener("click", async (event) => {
+  const range = event.target.closest("[data-history-days]");
+  if (range && state.historyRoom) {
+    try {
+      setBusy(range, true);
+      await showHistory(state.historyRoom, Number(range.dataset.historyDays));
+    } catch (error) { showToast(error.message, true); }
+    finally { setBusy(range, false); }
+    return;
+  }
+  const zoom = event.target.closest("[data-chart-zoom]");
+  if (zoom) {
+    const step = zoom.dataset.chartZoom === "in" ? 0.5 : -0.5;
+    state.historyZoom = Math.max(1, Math.min(4, state.historyZoom + step));
+    renderHistoryContent();
+    return;
+  }
+  if (event.target.closest("[data-chart-download]")) downloadHistoryCsv();
+});
 $("#logout-button").addEventListener("click", async () => {
   await cloud.signOut();
   localStorage.removeItem(cloud.pendingLoginKey);

@@ -157,6 +157,12 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .climate-chart { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 15px; margin-bottom: 18px; overflow: hidden; }
 .chart-heading { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; margin-bottom: 8px; }
 .chart-heading span { color: var(--muted); font-size: .72rem; }
+.chart-toolbar { display: flex; justify-content: space-between; gap: 10px; margin: 12px 0; }
+.chart-ranges, .chart-tools { display: flex; align-items: center; gap: 5px; }
+.chart-toolbar button { border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; background: #f7f3ec; color: var(--muted); font-size: .72rem; font-weight: 800; }
+.chart-toolbar button.active { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+.chart-tools span { min-width: 42px; text-align: center; color: var(--muted); font-size: .68rem; }
+.chart-viewport { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
 .chart-axis-label { fill: var(--muted); font-size: 10px; }
@@ -206,6 +212,9 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .schedule-room { grid-column: 1/-1; }
   .location-row { grid-template-columns: 1fr; }
   .chart-heading { display: grid; }
+  .chart-toolbar { align-items: start; flex-direction: column; }
+  .chart-tools { width: 100%; }
+  .chart-tools button:last-child { margin-left: auto; }
   .brand-block h1 { font-size: 4rem; }
   .panel-title-row { display: grid; }
   .panel-title-row .secondary { justify-self: start; }
