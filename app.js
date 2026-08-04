@@ -33,6 +33,8 @@ function showAuth(mode) {
   $("#login-form").classList.toggle("hidden", mode !== "login");
   $("#pair-form").classList.toggle("hidden", mode !== "pair");
   $("#handoff-created").classList.toggle("hidden", mode !== "handoff-created");
+  $("#password-reset-form").classList.toggle("hidden", mode !== "password-reset");
+  $("#password-set-done").classList.toggle("hidden", mode !== "password-set-done");
   const trusted = mode === "login" && cloud.hasTrustedDevice();
   $("#trusted-device-login").classList.toggle("hidden", !trusted);
   $("#trusted-device-copy").classList.toggle("hidden", !trusted);
@@ -90,7 +92,11 @@ async function boot() {
       return;
     }
     state.user = await cloud.user();
-    if (!state.user) return showAuth(cloud.pendingLogin() ? "pair" : "login");
+    if (!state.user) return showAuth("login");
+    if (cloud.callbackType === "recovery" || new URLSearchParams(location.search).get("password-reset") === "1") {
+      history.replaceState({}, document.title, location.pathname);
+      return showAuth("password-reset");
+    }
     const handoffRequested = new URLSearchParams(location.search).get("handoff") === "1";
     if (handoffRequested && !isStandaloneApp()) {
       const handoff = await cloud.createHandoff();
@@ -803,11 +809,39 @@ $("#login-form").addEventListener("submit", async (event) => {
   try {
     $("#auth-error").classList.add("hidden");
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    await cloud.sendMagicLink(values.email);
-    showAuth("pair");
-    showToast("一次性登入信已寄出");
-  } catch (error) { showToast(error.message, true); }
+    await cloud.signInWithPassword(values.email, values.password);
+    event.currentTarget.reset();
+    await boot();
+  } catch (error) {
+    $("#auth-error").textContent = "Email 或密碼不正確；如果還沒設定密碼，請按下方的設定密碼。";
+    $("#auth-error").classList.remove("hidden");
+  }
   finally { setBusy(button, false); }
+});
+
+$("#request-password-reset").addEventListener("click", async (event) => {
+  const email = new FormData($("#login-form")).get("email");
+  if (!email) return showToast("請先輸入 Email", true);
+  setBusy(event.currentTarget, true);
+  try {
+    await cloud.sendPasswordReset(email);
+    showToast("設定密碼信已寄出；請到 Email 點確認連結");
+  } catch (error) { showToast(`無法寄信：${error.message}`, true); }
+  finally { setBusy(event.currentTarget, false); }
+});
+
+$("#password-reset-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); const button = event.submitter; setBusy(button, true);
+  try {
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
+    await cloud.updatePassword(values.password);
+    event.currentTarget.reset();
+    showAuth("password-set-done");
+  } catch (error) {
+    $("#password-reset-error").textContent = error.message;
+    $("#password-reset-error").classList.remove("hidden");
+  } finally { setBusy(button, false); }
 });
 
 $("#pair-form").addEventListener("submit", async (event) => {
@@ -958,5 +992,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=16").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=17").then((registration) => registration.update()).catch(() => {});
 }

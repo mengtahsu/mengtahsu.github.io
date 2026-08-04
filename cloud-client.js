@@ -7,6 +7,7 @@ class MyAmbiCloud {
     this.loggedOutKey = "myambi.logged.out";
     this.pendingLoginKey = "myambi.pending.login";
     this.householdKey = "myambi.active.household";
+    this.callbackType = null;
     this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
     this.callbackError = this.readCallbackError();
     this.session = this.readSessionFromURL() || this.readSession();
@@ -19,6 +20,7 @@ class MyAmbiCloud {
   readSessionFromURL() {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (!params.get("access_token")) return null;
+    this.callbackType = params.get("type") || null;
     const session = {
       access_token: params.get("access_token"),
       refresh_token: params.get("refresh_token"),
@@ -127,6 +129,51 @@ class MyAmbiCloud {
     );
     localStorage.setItem(this.pendingLoginKey, JSON.stringify({ email: normalizedEmail, sent_at: Date.now() }));
     return result;
+  }
+
+  async signInWithPassword(email, password) {
+    const result = await this.request(
+      `${this.url}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(email || "").trim().toLowerCase(),
+          password: String(password || ""),
+        }),
+      },
+      false,
+    );
+    this.saveSession(result);
+    localStorage.removeItem(this.loggedOutKey);
+    await this.registerTrustedDevice();
+    return result;
+  }
+
+  async sendPasswordReset(email) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const redirect = `${location.origin}${location.pathname}?password-reset=1`;
+    await this.request(
+      `${this.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirect)}`,
+      { method: "POST", body: JSON.stringify({ email: normalizedEmail }) },
+      false,
+    );
+  }
+
+  async updatePassword(password) {
+    return this.request(`${this.url}/auth/v1/user`, {
+      method: "PUT",
+      body: JSON.stringify({ password: String(password || "") }),
+    });
+  }
+
+  async registerTrustedDevice() {
+    if (this.hasTrustedDevice()) return;
+    const result = await this.request(`${this.url}/functions/v1/auth-handoff`, {
+      method: "POST",
+      body: JSON.stringify({ action: "register" }),
+    });
+    if (!result.device_token) throw new Error("無法記住這台裝置");
+    localStorage.setItem(this.deviceKey, result.device_token);
   }
 
   async createHandoff() {
