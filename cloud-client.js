@@ -181,7 +181,15 @@ class MyAmbiCloud {
     try { return await this.request(`${this.url}/auth/v1/user`); }
     catch (error) {
       this.clearSession();
-      if (error.message === "請先登入" || /401|JWT|token/i.test(error.message)) return null;
+      if (error.message === "請先登入" || /401|JWT|token/i.test(error.message)) {
+        if (this.hasTrustedDevice() && !localStorage.getItem(this.loggedOutKey)) {
+          try {
+            await this.restoreDevice();
+            return await this.request(`${this.url}/auth/v1/user`);
+          } catch (_) { localStorage.removeItem(this.deviceKey); }
+        }
+        return null;
+      }
       throw error;
     }
   }
