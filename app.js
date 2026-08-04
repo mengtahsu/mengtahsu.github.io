@@ -154,9 +154,8 @@ function roomCard(room) {
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
     <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span><span>${room.mode || "—"}</span></div>
     <div class="target-row">
-      <button class="round temp-down" aria-label="降低一度" ${isOn ? "" : "disabled"}>−</button>
-      <span>冷氣設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
-      <button class="round temp-up" aria-label="提高一度" ${isOn ? "" : "disabled"}>＋</button>
+      <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
+      <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
     </div>
     <p class="feeling-label">你現在感覺如何？</p>
     <div class="feelings">
@@ -206,17 +205,6 @@ roomGrid.addEventListener("click", async (event) => {
           ? "已取消臨時模式；佇列檢查異常，恢復溫度命令未排入"
           : "已取消臨時模式；佇列已滿，恢復溫度命令未排入"
         : "已恢復 MyAmbi 自動控制");
-    } else if (event.target.matches(".temp-down, .temp-up")) {
-      const delta = event.target.matches(".temp-up") ? 1 : -1;
-      const target = Number(room.target_temperature || 27) + delta;
-      const result = await cloud.function("temperature", { room_id: roomId, target_temperature: target });
-      showToast(result.decision?.source === "off_guard"
-        ? "冷氣已關機，未送出溫度指令"
-        : result.decision?.dropped
-        ? result.decision?.source === "queue_unhealthy"
-          ? `佇列自我檢查異常，${target}° 命令已丟棄`
-          : `佇列已有 5 筆，${target}° 命令已丟棄`
-        : `${target}° 已排入佇列，將依序送出`);
     } else if (event.target.matches(".history")) {
       await showHistory(room);
     } else if (event.target.matches(".auto-toggle")) {
@@ -231,17 +219,22 @@ roomGrid.addEventListener("click", async (event) => {
 async function showHistory(room) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
   const [feedback, decisions] = await Promise.all([
-    cloud.rest("comfort_feedback", `select=id,recorded_at,local_date,season,feeling&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
+    cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
     cloud.rest("control_decisions", `select=id,decided_at,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
   ]);
+  const userIds = [...new Set(feedback.map((item) => item.user_id).filter(Boolean))];
+  const profiles = userIds.length
+    ? await cloud.rest("profiles", `select=id,display_name&id=in.(${userIds.join(",")})`)
+    : [];
+  const profileNames = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
   $("#history-title").textContent = room.name;
   const feelings = { "-2": "非常冷", "-1": "太冷", "0": "剛好", "1": "太熱", "2": "非常熱" };
   const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
   const events = [
     ...feedback.map((item) => ({
       at: item.recorded_at,
-      title: `回報「${feelings[item.feeling]}」`,
-      detail: `${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 已加入個人舒適學習`,
+      title: `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
+      detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%`,
     })),
     ...decisions.map((item) => ({
       at: item.decided_at,
@@ -328,7 +321,7 @@ function renderLearning() {
         ? `較常覺得熱（${bucket.hot} 次）`
         : `冷熱回報平衡`;
       row.innerHTML = `
-        <div><strong></strong><span>${bucket.label} · ${direction}</span></div>
+        <div><strong></strong><span>${bucket.label} · ${direction} · 濕度體感修正 ${Number(bucket.humidity_correction) >= 0 ? "+" : ""}${Number(bucket.humidity_correction || 0).toFixed(1)}°</span></div>
         <div class="learned-temperature"><small>舒適室溫</small>${bucket.comfort_room_temperature == null ? "—" : `${Number(bucket.comfort_room_temperature).toFixed(1)}°`}</div>
         <div class="learned-temperature"><small>建議冷氣</small>${Number(bucket.recommended_setpoint).toFixed(1)}°</div>
         <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
