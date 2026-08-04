@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
+const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -448,7 +448,10 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   addPath("outdoor_temperature", yTemperature, "outdoor");
   addPath("target_temperature", yTemperature, "target");
   addPath("humidity", yHumidity, "humidity");
-  svg.style.width = `${Math.round(zoom * 100)}%`;
+  // Keep the SVG close to its 760-unit viewBox width so axis text does not
+  // shrink to unreadable sizes on an iPhone. The viewport scrolls sideways.
+  svg.style.width = `${Math.round(760 * zoom)}px`;
+  svg.style.maxWidth = "none";
   const viewport = document.createElement("div");
   viewport.className = "chart-viewport";
   viewport.append(svg);
@@ -514,6 +517,7 @@ async function loadSettings() {
   renderAlerts();
   if (!isAdmin()) return;
   const result = await cloud.function("admin-state", {}, "GET");
+  state.household = result.household;
   state.users = result.members;
   state.allRooms = result.rooms;
   renderSchedules();
@@ -668,38 +672,34 @@ function renderSchedules() {
 }
 
 function renderLocations() {
-  const supported = state.allRooms.some((room) => Object.hasOwn(room, "location_label"));
+  const supported = state.household && Object.hasOwn(state.household, "location_label");
   $("#location-panel").classList.toggle("hidden", !supported);
   if (!supported) return;
   const list = $("#locations-list");
-  list.replaceChildren(...state.allRooms.map((room) => {
-    const form = document.createElement("form");
-    form.className = "location-row";
-    form.dataset.roomId = room.id;
-    const identity = document.createElement("div");
-    identity.className = "location-room";
-    const name = document.createElement("strong");
-    name.textContent = room.name;
-    const saved = document.createElement("span");
-    saved.textContent = room.location_label || "尚未設定位置";
-    identity.append(name, saved);
-    const label = document.createElement("label");
-    label.textContent = "縣市／行政區";
-    const input = document.createElement("input");
-    input.name = "location";
-    input.required = true;
-    input.maxLength = 200;
-    input.placeholder = "例如：台北市大安區";
-    input.value = room.location_label || "";
-    label.append(input);
-    const button = document.createElement("button");
-    button.className = "secondary";
-    button.type = "submit";
-    button.textContent = "儲存位置";
-    form.append(identity, label, button);
-    return form;
-  }));
-  if (!state.allRooms.length) list.textContent = "請先建立或匯入房間。";
+  const form = document.createElement("form");
+  form.className = "location-row";
+  const identity = document.createElement("div");
+  identity.className = "location-room";
+  const name = document.createElement("strong");
+  name.textContent = state.household.name;
+  const saved = document.createElement("span");
+  saved.textContent = state.household.location_label || "尚未設定位置";
+  identity.append(name, saved);
+  const label = document.createElement("label");
+  label.textContent = "縣市／行政區";
+  const input = document.createElement("input");
+  input.name = "location";
+  input.required = true;
+  input.maxLength = 200;
+  input.placeholder = "例如：台北市大安區";
+  input.value = state.household.location_label || "";
+  label.append(input);
+  const button = document.createElement("button");
+  button.className = "secondary";
+  button.type = "submit";
+  button.textContent = "儲存家庭位置";
+  form.append(identity, label, button);
+  list.replaceChildren(form);
 }
 
 $("#personal-room-choices").addEventListener("change", async () => {
@@ -739,7 +739,6 @@ $("#locations-list").addEventListener("submit", async (event) => {
   setBusy(button, true);
   try {
     const result = await cloud.function("location", {
-      room_id: form.dataset.roomId,
       location: values.get("location"),
     });
     showToast(`已設定為 ${result.label}`);
@@ -938,5 +937,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=21").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=23").then((registration) => registration.update()).catch(() => {});
 }

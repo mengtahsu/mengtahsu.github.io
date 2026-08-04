@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=21">
+  <link rel="stylesheet" href="/styles.css?v=23">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -167,8 +167,8 @@
 
           <section id="location-panel" class="panel wide admin-only hidden">
             <span class="step">室外天氣情境</span>
-            <h2>各房間位置</h2>
-            <p>填縣市與行政區就夠了，不必提供門牌。MyAmbi 只在儲存時把地名換成座標，之後用座標取得室外溫濕度，供曲線與學習演算法參考。</p>
+            <h2>這個家的位置</h2>
+            <p>每個家只需設定一次，家裡所有房間共用同一份室外天氣。填縣市與行政區就夠了，不必提供門牌；其他家可以設定不同位置。</p>
             <div id="locations-list" class="locations-list"></div>
             <p class="source-note">地點資料 © OpenStreetMap contributors；室外天氣由 Open‑Meteo 提供，是附近區域的氣象估計值。</p>
           </section>
@@ -202,8 +202,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=21"></script>
-  <script src="/cloud-client.js?v=21"></script>
-  <script src="/app.js?v=21" defer></script>
+  <script src="/config.js?v=23"></script>
+  <script src="/cloud-client.js?v=23"></script>
+  <script src="/app.js?v=23" defer></script>
 </body>
 </html>

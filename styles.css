@@ -158,33 +158,34 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .history-content { margin-top: 24px; }
 .climate-chart { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 15px; margin-bottom: 18px; overflow: hidden; }
 .chart-heading { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; margin-bottom: 8px; }
-.chart-heading span { color: var(--muted); font-size: .72rem; }
+.chart-heading strong { font-size: 1.08rem; }
+.chart-heading span { color: var(--muted); font-size: .9rem; line-height: 1.4; }
 .chart-toolbar { display: flex; justify-content: space-between; gap: 10px; margin: 12px 0; }
 .chart-ranges, .chart-tools { display: flex; align-items: center; gap: 5px; }
-.chart-toolbar button { border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; background: #f7f3ec; color: var(--muted); font-size: .72rem; font-weight: 800; }
+.chart-toolbar button { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; background: #f7f3ec; color: var(--muted); font-size: .9rem; font-weight: 800; }
 .chart-toolbar button.active { border-color: var(--green); background: var(--green-soft); color: var(--green); }
-.chart-tools span { min-width: 42px; text-align: center; color: var(--muted); font-size: .68rem; }
+.chart-tools span { min-width: 48px; text-align: center; color: var(--muted); font-size: .88rem; }
 .chart-viewport { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
-.chart-axis-label { fill: var(--muted); font-size: 10px; }
+.chart-axis-label { fill: var(--muted); font-size: 13px; font-weight: 650; }
 .chart-series { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .chart-series.indoor { stroke: var(--green); }
 .chart-series.outdoor { stroke: var(--warm); }
 .chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
 .chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
-.chart-legend { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .72rem; margin-top: 6px; }
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .92rem; margin-top: 10px; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }
 .chart-legend i { width: 16px; height: 3px; border-radius: 99px; background: currentColor; }
 .chart-legend i.indoor { color: var(--green); }
 .chart-legend i.outdoor { color: var(--warm); }
 .chart-legend i.target { color: var(--blue); }
 .chart-legend i.humidity { color: #8470a8; }
-.history-empty { color: var(--muted); }
-.history-item { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
-.history-time { color: var(--muted); font-size: .76rem; }
-.history-title { font-weight: 800; }
-.history-detail { color: var(--muted); font-size: .82rem; margin-top: 3px; }
+.history-empty { color: var(--muted); font-size: 1rem; }
+.history-item { display: grid; grid-template-columns: 102px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.history-time { color: var(--muted); font-size: .9rem; line-height: 1.4; }
+.history-title { font-size: 1rem; font-weight: 800; }
+.history-detail { color: var(--muted); font-size: .98rem; line-height: 1.5; margin-top: 4px; }
 .toast { position: fixed; z-index: 10; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--ink); color: white; padding: 11px 16px; border-radius: 999px; opacity: 0; pointer-events: none; transition: .25s ease; box-shadow: var(--shadow); font-size: .85rem; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .app-nav { display: none; }
