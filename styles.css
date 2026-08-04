@@ -115,13 +115,17 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .member-role { color: var(--muted); font-size: .75rem; margin-top: 3px; }
 .plain-fieldset { border: 0; padding: 0; margin: 18px 0 0; }
 .plain-fieldset legend { color: var(--muted); font-size: .82rem; font-weight: 800; margin-bottom: 9px; }
-.schedules-list { display: grid; gap: 10px; margin-top: 20px; }
+.schedules-list, .locations-list { display: grid; gap: 10px; margin-top: 20px; }
 .schedule-row { display: grid; grid-template-columns: minmax(130px,1fr) auto 120px 120px auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .schedule-row label { margin: 0; }
 .schedule-room { display: grid; gap: 3px; align-self: center; }
 .schedule-room span { color: var(--muted); font-size: .72rem; }
 .schedule-toggle { display: flex; align-items: center; gap: 6px; align-self: center; }
 .schedule-toggle input { width: auto; }
+.location-row { display: grid; grid-template-columns: minmax(150px,.8fr) minmax(220px,1.5fr) auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
+.location-row label { margin: 0; }
+.location-room { display: grid; gap: 3px; align-self: center; }
+.location-room span, .source-note { color: var(--muted); font-size: .72rem; }
 .learning-list, .alerts-list { display: grid; gap: 10px; margin-top: 20px; }
 .learning-room { display: grid; grid-template-columns: minmax(180px,1fr) auto auto auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .learning-room > div:first-child { display: grid; gap: 3px; }
@@ -138,11 +142,30 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .alert-row strong { display: block; margin-bottom: 4px; }
 .alert-row time { display: block; color: var(--muted); font-size: .72rem; margin-top: 5px; }
 
-dialog { width: min(620px, calc(100% - 24px)); max-height: 82vh; border: 0; border-radius: 26px; padding: 26px; box-shadow: 0 30px 100px rgba(20,30,25,.25); background: #fbfaf7; color: var(--ink); }
+dialog { width: min(800px, calc(100% - 24px)); max-height: 82vh; border: 0; border-radius: 26px; padding: 26px; box-shadow: 0 30px 100px rgba(20,30,25,.25); background: #fbfaf7; color: var(--ink); }
 dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .dialog-head { display: flex; justify-content: space-between; align-items: start; position: sticky; top: 0; background: #fbfaf7; }
 .dialog-head h2 { margin: 0; }
 .history-content { margin-top: 24px; }
+.climate-chart { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 15px; margin-bottom: 18px; overflow: hidden; }
+.chart-heading { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; margin-bottom: 8px; }
+.chart-heading span { color: var(--muted); font-size: .72rem; }
+.climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
+.chart-axis-label { fill: var(--muted); font-size: 10px; }
+.chart-series { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.chart-series.indoor { stroke: var(--green); }
+.chart-series.outdoor { stroke: var(--warm); }
+.chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
+.chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
+.chart-legend { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .72rem; margin-top: 6px; }
+.chart-legend span { display: flex; align-items: center; gap: 5px; }
+.chart-legend i { width: 16px; height: 3px; border-radius: 99px; background: currentColor; }
+.chart-legend i.indoor { color: var(--green); }
+.chart-legend i.outdoor { color: var(--warm); }
+.chart-legend i.target { color: var(--blue); }
+.chart-legend i.humidity { color: #8470a8; }
+.history-empty { color: var(--muted); }
 .history-item { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
 .history-time { color: var(--muted); font-size: .76rem; }
 .history-title { font-weight: 800; }
@@ -171,6 +194,8 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .member-row { align-items: start; flex-direction: column; }
   .schedule-row { grid-template-columns: 1fr 1fr; }
   .schedule-room { grid-column: 1/-1; }
+  .location-row { grid-template-columns: 1fr; }
+  .chart-heading { display: grid; }
   .brand-block h1 { font-size: 4rem; }
   .panel-title-row { display: grid; }
   .panel-title-row .secondary { justify-self: start; }

@@ -1,4 +1,4 @@
-const CACHE = "myambi-shell-v9";
+const CACHE = "myambi-shell-v10";
 const SHELL = ["/", "/styles.css", "/logo.svg", "/manifest.json", "/cloud-client.js", "/app.js"];
 
 self.addEventListener("install", (event) => {

@@ -110,8 +110,15 @@ async function loadRooms() {
 }
 
 function displayNumber(value, digits = 0) {
+  if (value === null || value === undefined || value === "") return "—";
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(digits) : "—";
+}
+
+function numericValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function renderRooms() {
@@ -152,7 +159,7 @@ function roomCard(room) {
   article.innerHTML = `
     <div class="room-head"><h2></h2><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
-    <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span><span>${room.mode || "—"}</span></div>
+    <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}<span>${room.mode || "—"}</span></div>
     <div class="target-row">
       <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
       <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
@@ -218,9 +225,10 @@ roomGrid.addEventListener("click", async (event) => {
 
 async function showHistory(room) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
-  const [feedback, decisions] = await Promise.all([
+  const [feedback, decisions, readings] = await Promise.all([
     cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
     cloud.rest("control_decisions", `select=id,decided_at,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
+    cloud.rest("climate_readings", `select=*&room_id=${roomFilter}&order=observed_at.desc&limit=1000`),
   ]);
   const userIds = [...new Set(feedback.map((item) => item.user_id).filter(Boolean))];
   const profiles = userIds.length
@@ -234,7 +242,7 @@ async function showHistory(room) {
     ...feedback.map((item) => ({
       at: item.recorded_at,
       title: `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
-      detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%`,
+      detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 室外 ${displayNumber(item.snapshot?.outdoor_temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%`,
     })),
     ...decisions.map((item) => ({
       at: item.decided_at,
@@ -253,7 +261,7 @@ async function showHistory(room) {
     })),
   ].sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 50);
   const content = $("#history-content");
-  content.replaceChildren(...events.map((item) => {
+  const eventRows = events.map((item) => {
     const row = document.createElement("div"); row.className = "history-item";
     const time = document.createElement("div"); time.className = "history-time";
     time.textContent = new Date(item.at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -261,9 +269,127 @@ async function showHistory(room) {
     const title = document.createElement("div"); title.className = "history-title"; title.textContent = item.title;
     const detail = document.createElement("div"); detail.className = "history-detail"; detail.textContent = item.detail;
     body.append(title, detail); row.append(time, body); return row;
-  }));
-  if (!events.length) content.textContent = "還沒有紀錄。";
+  });
+  const chart = climateChart(readings);
+  content.replaceChildren(chart, ...eventRows);
+  if (!events.length) {
+    const empty = document.createElement("p");
+    empty.className = "history-empty";
+    empty.textContent = "還沒有操作或體感紀錄。";
+    content.append(empty);
+  }
   $("#history-dialog").showModal();
+}
+
+function climateChart(rawReadings) {
+  const section = document.createElement("section");
+  section.className = "climate-chart";
+  const heading = document.createElement("div");
+  heading.className = "chart-heading";
+  heading.innerHTML = "<strong>房間環境曲線</strong><span>最近約 3 天 · 左軸 °C，右軸濕度</span>";
+  section.append(heading);
+
+  const readings = rawReadings
+    .filter((row) => Number.isFinite(new Date(row.observed_at).getTime()))
+    .sort((a, b) => new Date(a.observed_at) - new Date(b.observed_at));
+  if (readings.length < 2) {
+    const empty = document.createElement("p");
+    empty.textContent = "累積兩筆環境資料後就會顯示曲線。";
+    section.append(empty);
+    return section;
+  }
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 760 300");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "室內、室外、冷氣設定溫度與濕度隨時間變化");
+  const margin = { left: 44, right: 44, top: 20, bottom: 34 };
+  const plotWidth = 760 - margin.left - margin.right;
+  const plotHeight = 300 - margin.top - margin.bottom;
+  const times = readings.map((row) => new Date(row.observed_at).getTime());
+  const start = Math.min(...times);
+  const end = Math.max(...times);
+  const timeSpan = Math.max(1, end - start);
+  const temperatureValues = readings.flatMap((row) => [
+    numericValue(row.temperature),
+    numericValue(row.outdoor_temperature),
+    numericValue(row.target_temperature),
+  ]).filter((value) => value !== null);
+  if (!temperatureValues.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "目前沒有可畫出的溫度資料。";
+    section.append(empty);
+    return section;
+  }
+  let temperatureMin = Math.floor(Math.min(...temperatureValues) - 1);
+  let temperatureMax = Math.ceil(Math.max(...temperatureValues) + 1);
+  if (temperatureMax === temperatureMin) temperatureMax += 1;
+  const x = (at) => margin.left + (at - start) / timeSpan * plotWidth;
+  const yTemperature = (value) => margin.top + (temperatureMax - value) / (temperatureMax - temperatureMin) * plotHeight;
+  const yHumidity = (value) => margin.top + (100 - value) / 100 * plotHeight;
+
+  const line = (x1, y1, x2, y2, className) => {
+    const element = document.createElementNS(svgNS, "line");
+    Object.entries({ x1, y1, x2, y2 }).forEach(([key, value]) => element.setAttribute(key, String(value)));
+    element.setAttribute("class", className);
+    svg.append(element);
+  };
+  const label = (value, xValue, yValue, anchor = "end") => {
+    const element = document.createElementNS(svgNS, "text");
+    element.textContent = value;
+    element.setAttribute("x", String(xValue));
+    element.setAttribute("y", String(yValue));
+    element.setAttribute("text-anchor", anchor);
+    element.setAttribute("class", "chart-axis-label");
+    svg.append(element);
+  };
+  for (let index = 0; index <= 4; index += 1) {
+    const y = margin.top + plotHeight * index / 4;
+    const temp = temperatureMax - (temperatureMax - temperatureMin) * index / 4;
+    line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
+    label(`${temp.toFixed(0)}°`, margin.left - 7, y + 4);
+    label(`${100 - index * 25}%`, 760 - margin.right + 7, y + 4, "start");
+  }
+  const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
+  [0, 0.5, 1].forEach((position) => {
+    const at = start + timeSpan * position;
+    label(timeFormat.format(new Date(at)), x(at), 294, position === 0 ? "start" : position === 1 ? "middle" : "end");
+  });
+
+  const addPath = (key, y, className) => {
+    let pathData = "";
+    let drawing = false;
+    readings.forEach((row) => {
+      const value = numericValue(row[key]);
+      if (value === null) {
+        drawing = false;
+        return;
+      }
+      pathData += `${drawing ? "L" : "M"}${x(new Date(row.observed_at).getTime()).toFixed(1)},${y(value).toFixed(1)} `;
+      drawing = true;
+    });
+    if (!pathData) return;
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", pathData);
+    path.setAttribute("class", `chart-series ${className}`);
+    svg.append(path);
+  };
+  addPath("temperature", yTemperature, "indoor");
+  addPath("outdoor_temperature", yTemperature, "outdoor");
+  addPath("target_temperature", yTemperature, "target");
+  addPath("humidity", yHumidity, "humidity");
+  section.append(svg);
+
+  const legend = document.createElement("div");
+  legend.className = "chart-legend";
+  [["indoor", "室內溫度"], ["outdoor", "室外溫度"], ["target", "冷氣設定"], ["humidity", "室內濕度"]].forEach(([className, text]) => {
+    const item = document.createElement("span");
+    item.innerHTML = `<i class="${className}"></i>${text}`;
+    legend.append(item);
+  });
+  section.append(legend);
+  return section;
 }
 
 async function showSettings() {
@@ -288,6 +414,7 @@ async function loadSettings() {
   state.users = result.members;
   state.allRooms = result.rooms;
   renderSchedules();
+  renderLocations();
   $("#members-list").replaceChildren(
     ...state.users.filter((user) => user.role === "member").map(memberRow),
   );
@@ -425,6 +552,38 @@ function renderSchedules() {
   if (!state.allRooms.length) list.textContent = "請先建立或匯入房間。";
 }
 
+function renderLocations() {
+  const list = $("#locations-list");
+  list.replaceChildren(...state.allRooms.map((room) => {
+    const form = document.createElement("form");
+    form.className = "location-row";
+    form.dataset.roomId = room.id;
+    const identity = document.createElement("div");
+    identity.className = "location-room";
+    const name = document.createElement("strong");
+    name.textContent = room.name;
+    const saved = document.createElement("span");
+    saved.textContent = room.location_label || "尚未設定位置";
+    identity.append(name, saved);
+    const label = document.createElement("label");
+    label.textContent = "縣市／行政區";
+    const input = document.createElement("input");
+    input.name = "location";
+    input.required = true;
+    input.maxLength = 200;
+    input.placeholder = "例如：台北市大安區";
+    input.value = room.location_label || "";
+    label.append(input);
+    const button = document.createElement("button");
+    button.className = "secondary";
+    button.type = "submit";
+    button.textContent = "儲存位置";
+    form.append(identity, label, button);
+    return form;
+  }));
+  if (!state.allRooms.length) list.textContent = "請先建立或匯入房間。";
+}
+
 $("#personal-room-choices").addEventListener("change", async () => {
   const roomIds = [...$("#personal-room-choices").querySelectorAll("input:checked")].map((item) => item.value);
   try {
@@ -448,6 +607,24 @@ $("#schedules-list").addEventListener("submit", async (event) => {
       scheduled_off: values.get("scheduled_off"),
     });
     showToast("開關機時間已儲存");
+    await loadSettings();
+    await loadRooms();
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#locations-list").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const button = event.submitter;
+  const values = new FormData(form);
+  setBusy(button, true);
+  try {
+    const result = await cloud.function("location", {
+      room_id: form.dataset.roomId,
+      location: values.get("location"),
+    });
+    showToast(`已設定為 ${result.label}`);
     await loadSettings();
     await loadRooms();
   } catch (error) { showToast(error.message, true); }
