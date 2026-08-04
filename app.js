@@ -31,24 +31,11 @@ function showAuth(mode) {
   appView.classList.add("hidden");
   $("#setup-form").classList.toggle("hidden", mode !== "setup");
   $("#login-form").classList.toggle("hidden", mode !== "login");
-  $("#pair-form").classList.toggle("hidden", mode !== "pair");
-  $("#handoff-created").classList.toggle("hidden", mode !== "handoff-created");
   $("#password-reset-form").classList.toggle("hidden", mode !== "password-reset");
   $("#password-set-done").classList.toggle("hidden", mode !== "password-set-done");
   const trusted = mode === "login" && cloud.hasTrustedDevice();
   $("#trusted-device-login").classList.toggle("hidden", !trusted);
   $("#trusted-device-copy").classList.toggle("hidden", !trusted);
-  if (mode === "pair") {
-    const pending = cloud.pendingLogin();
-    $("#pair-copy").textContent = pending
-      ? `登入信已寄到 ${pending.email}。點信中的連結後，Safari 會顯示配對碼；複製後回到這裡貼上。`
-      : "輸入這台裝置的一次性配對碼。配對成功後，MyAmbi 會在主畫面 App 保持登入。";
-    window.setTimeout(() => $("#pair-code").focus(), 50);
-  }
-}
-
-function isStandaloneApp() {
-  return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
 function displayName() {
@@ -96,14 +83,6 @@ async function boot() {
     if (cloud.callbackType === "recovery" || new URLSearchParams(location.search).get("password-reset") === "1") {
       history.replaceState({}, document.title, location.pathname);
       return showAuth("password-reset");
-    }
-    const handoffRequested = new URLSearchParams(location.search).get("handoff") === "1";
-    if (handoffRequested && !isStandaloneApp()) {
-      const handoff = await cloud.createHandoff();
-      $("#handoff-code").textContent = handoff.code;
-      $("#handoff-code").dataset.code = handoff.code;
-      history.replaceState({}, document.title, location.pathname);
-      return showAuth("handoff-created");
     }
     const householdResult = await cloud.function("households", {}, "GET");
     state.households = householdResult.households ?? [];
@@ -844,38 +823,6 @@ $("#password-reset-form").addEventListener("submit", async (event) => {
   } finally { setBusy(button, false); }
 });
 
-$("#pair-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.submitter; setBusy(button, true);
-  try {
-    $("#pair-error").classList.add("hidden");
-    const code = new FormData(event.currentTarget).get("code");
-    await cloud.claimHandoff(code);
-    event.currentTarget.reset();
-    await boot();
-  } catch (error) {
-    $("#pair-error").textContent = `無法登入：${error.message}`;
-    $("#pair-error").classList.remove("hidden");
-  } finally { setBusy(button, false); }
-});
-
-$("#resend-link").addEventListener("click", async (event) => {
-  const pending = cloud.pendingLogin();
-  if (!pending) return showAuth("login");
-  setBusy(event.currentTarget, true);
-  try {
-    await cloud.sendMagicLink(pending.email);
-    showToast("新的登入信已寄出");
-  } catch (error) { showToast(error.message, true); }
-  finally { setBusy(event.currentTarget, false); }
-});
-
-$("#change-email").addEventListener("click", () => {
-  localStorage.removeItem(cloud.pendingLoginKey);
-  showAuth("login");
-});
-
-$("#use-pair-code").addEventListener("click", () => showAuth("pair"));
-
 $("#trusted-device-login").addEventListener("click", async (event) => {
   setBusy(event.currentTarget, true);
   try {
@@ -884,19 +831,6 @@ $("#trusted-device-login").addEventListener("click", async (event) => {
   } catch (error) { showToast(`無法登入：${error.message}`, true); }
   finally { setBusy(event.currentTarget, false); }
 });
-
-$("#copy-handoff").addEventListener("click", async () => {
-  const code = $("#handoff-code").dataset.code;
-  if (!code) return;
-  try {
-    await navigator.clipboard.writeText(code);
-    showToast("配對碼已複製，請切回主畫面版 MyAmbi");
-  } catch (_) {
-    showToast("請長按上方配對碼複製", true);
-  }
-});
-
-$("#handoff-code").addEventListener("click", () => $("#copy-handoff").click());
 
 $("#member-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.submitter; setBusy(button, true);
@@ -979,7 +913,6 @@ $("#history-content").addEventListener("click", async (event) => {
 });
 $("#logout-button").addEventListener("click", async () => {
   await cloud.signOut();
-  localStorage.removeItem(cloud.pendingLoginKey);
   location.reload();
 });
 
@@ -992,5 +925,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=17").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=18").then((registration) => registration.update()).catch(() => {});
 }

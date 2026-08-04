@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=17">
+  <link rel="stylesheet" href="/styles.css?v=18">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -46,7 +46,6 @@
         <label>密碼<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required></label>
         <button class="primary" type="submit">登入並記住這台裝置</button>
         <button id="request-password-reset" class="pair-entry-button" type="button">第一次設定密碼／忘記密碼</button>
-        <button id="use-pair-code" class="text-button auth-fallback" type="button">使用舊的裝置配對碼</button>
         <p id="auth-error" class="error-note hidden"></p>
       </form>
 
@@ -66,28 +65,6 @@
         <p>關閉 Safari，從 iPhone 主畫面開啟 MyAmbi；輸入 Email 和剛設定的密碼一次，以後就會保持登入。</p>
       </section>
 
-      <form id="pair-form" class="panel hidden">
-        <p class="eyebrow">只需配對這台裝置一次</p>
-        <h2>輸入裝置配對碼</h2>
-        <p id="pair-copy">輸入這台裝置的一次性配對碼。配對成功後，MyAmbi 會在主畫面 App 保持登入。</p>
-        <label>裝置配對碼
-          <input id="pair-code" name="code" class="otp-input" inputmode="text" autocomplete="one-time-code" maxlength="14" required placeholder="ABCD-EFGH-JKLM">
-        </label>
-        <button class="primary" type="submit">配對並登入</button>
-        <div class="auth-links">
-          <button id="resend-link" class="text-button" type="button">重新寄登入信</button>
-          <button id="change-email" class="text-button" type="button">更換 Email</button>
-        </div>
-        <p id="pair-error" class="error-note hidden"></p>
-      </form>
-
-      <section id="handoff-created" class="panel hidden">
-        <p class="eyebrow">Safari 已確認是你</p>
-        <h2>把登入帶回主畫面</h2>
-        <p>複製這組一次性配對碼，切回主畫面版 MyAmbi 貼上。十分鐘後失效，而且只能使用一次。</p>
-        <button id="handoff-code" class="handoff-code" type="button" aria-label="複製裝置配對碼"></button>
-        <button id="copy-handoff" class="primary" type="button">複製配對碼</button>
-      </section>
     </section>
 
     <section id="app-view" class="hidden">
@@ -225,8 +202,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=17"></script>
-  <script src="/cloud-client.js?v=17"></script>
-  <script src="/app.js?v=17" defer></script>
+  <script src="/config.js?v=18"></script>
+  <script src="/cloud-client.js?v=18"></script>
+  <script src="/app.js?v=18" defer></script>
 </body>
 </html>

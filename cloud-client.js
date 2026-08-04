@@ -5,7 +5,6 @@ class MyAmbiCloud {
     this.storageKey = "myambi.supabase.session";
     this.deviceKey = "myambi.trusted.device";
     this.loggedOutKey = "myambi.logged.out";
-    this.pendingLoginKey = "myambi.pending.login";
     this.householdKey = "myambi.active.household";
     this.callbackType = null;
     this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
@@ -57,20 +56,6 @@ class MyAmbiCloud {
     localStorage.removeItem(this.storageKey);
   }
 
-  pendingLogin() {
-    try {
-      const pending = JSON.parse(localStorage.getItem(this.pendingLoginKey) || "null");
-      if (!pending?.email || Date.now() - Number(pending.sent_at || 0) > 60 * 60 * 1000) {
-        localStorage.removeItem(this.pendingLoginKey);
-        return null;
-      }
-      return pending;
-    } catch (_) {
-      localStorage.removeItem(this.pendingLoginKey);
-      return null;
-    }
-  }
-
   baseHeaders(authenticated = true) {
     const headers = { apikey: this.key, Accept: "application/json" };
     if (authenticated && this.session?.access_token) headers.Authorization = `Bearer ${this.session.access_token}`;
@@ -119,18 +104,6 @@ class MyAmbiCloud {
     this.saveSession({ ...refreshed, expires_at: Math.floor(Date.now() / 1000) + Number(refreshed.expires_in || 3600) });
   }
 
-  async sendMagicLink(email) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    const redirect = `${location.origin}${location.pathname}?handoff=1`;
-    const result = await this.request(
-      `${this.url}/auth/v1/otp?redirect_to=${encodeURIComponent(redirect)}`,
-      { method: "POST", body: JSON.stringify({ email: normalizedEmail, create_user: true }) },
-      false,
-    );
-    localStorage.setItem(this.pendingLoginKey, JSON.stringify({ email: normalizedEmail, sent_at: Date.now() }));
-    return result;
-  }
-
   async signInWithPassword(email, password) {
     const result = await this.request(
       `${this.url}/auth/v1/token?grant_type=password`,
@@ -174,29 +147,6 @@ class MyAmbiCloud {
     });
     if (!result.device_token) throw new Error("無法記住這台裝置");
     localStorage.setItem(this.deviceKey, result.device_token);
-  }
-
-  async createHandoff() {
-    return this.request(`${this.url}/functions/v1/auth-handoff`, {
-      method: "POST",
-      body: JSON.stringify({ action: "create" }),
-    });
-  }
-
-  async claimHandoff(code) {
-    const result = await this.request(
-      `${this.url}/functions/v1/auth-handoff`,
-      { method: "POST", body: JSON.stringify({ action: "claim", code }) },
-      false,
-    );
-    if (!result.session?.access_token || !result.session?.refresh_token) {
-      throw new Error("配對完成，但沒有取得登入狀態");
-    }
-    this.saveSession(result.session);
-    if (result.device_token) localStorage.setItem(this.deviceKey, result.device_token);
-    localStorage.removeItem(this.loggedOutKey);
-    localStorage.removeItem(this.pendingLoginKey);
-    return result.session;
   }
 
   hasTrustedDevice() {
