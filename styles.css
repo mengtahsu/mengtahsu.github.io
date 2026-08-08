@@ -269,8 +269,9 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-fixed-axis.left span { left: 2px; }
 .chart-fixed-axis.right { right: 0; width: var(--chart-right-axis,26px); background: linear-gradient(270deg,#fff 68%,rgba(255,255,255,0)); }
 .chart-fixed-axis.right span { right: 2px; }
-.chart-viewport { width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
-.climate-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-viewport { display: flex; align-items: flex-start; width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.chart-end-spacer { flex: 0 0 auto; height: 1px; }
+.climate-chart svg { display: block; flex: 0 0 auto; width: 100%; height: auto; overflow: visible; }
 .chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
 .chart-axis-label { fill: var(--muted); font-size: 13px; font-weight: 650; }
 .chart-series { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }

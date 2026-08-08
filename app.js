@@ -299,7 +299,7 @@ async function showHistory(room, days = 1) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
   const [feedback, decisions, climate] = await Promise.all([
     cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
-    cloud.rest("control_decisions", `select=id,decided_at,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
+    cloud.rest("control_decisions", `select=id,decided_at,previous_temperature,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
     cloud.function("climate-history", { room_id: room.id, days }),
   ]);
   const userIds = [...new Set(feedback.map((item) => item.user_id).filter(Boolean))];
@@ -316,21 +316,42 @@ async function showHistory(room, days = 1) {
       title: `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
       detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 室外 ${displayNumber(item.snapshot?.outdoor_temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%${numericValue(item.snapshot?.tvoc) === null ? "" : ` · TVOC ${displayNumber(item.snapshot.tvoc)} ppb`}${numericValue(item.snapshot?.co2) === null ? "" : ` · eCO₂ ${displayNumber(item.snapshot.co2)} ppm`}`,
     })),
-    ...decisions.map((item) => ({
-      at: item.decided_at,
-      title: item.sent
-        ? `命令已送出 · ${item.desired_temperature}°`
-        : item.source === "queue_failed"
-        ? `命令 #${item.queue_command_id} 執行失敗`
-        : item.source === "queue_full"
-        ? "佇列已滿，命令已丟棄"
-        : item.source === "queue_unhealthy"
-        ? "佇列檢查異常，命令已丟棄"
-        : item.queue_command_id
-        ? `命令 #${item.queue_command_id} 已排入佇列`
-        : "維持目前設定",
-      detail: item.reason,
-    })),
+    ...decisions.map((item) => {
+      const decidedAt = new Date(item.decided_at).getTime();
+      const nearbyReading = (climate.readings ?? []).reduce((nearest, reading) => {
+        const distance = Math.abs(new Date(reading.observed_at).getTime() - decidedAt);
+        return !nearest || distance < nearest.distance ? { reading, distance } : nearest;
+      }, null);
+      const indoor = nearbyReading?.distance <= 10 * 60_000
+        ? numericValue(nearbyReading.reading.temperature)
+        : null;
+      const previousSetpoint = numericValue(item.previous_temperature) ??
+        (nearbyReading?.distance <= 10 * 60_000
+          ? numericValue(nearbyReading.reading.target_temperature)
+          : null);
+      const evidence = [];
+      if (!String(item.reason).includes("目前室溫") && indoor !== null) {
+        evidence.push(`決策當下室溫 ${displayNumber(indoor, 1)}°`);
+      }
+      if (!String(item.reason).includes("冷氣目前設定") && previousSetpoint !== null) {
+        evidence.push(`冷氣當時設定 ${displayNumber(previousSetpoint, 1)}°`);
+      }
+      return {
+        at: item.decided_at,
+        title: item.sent
+          ? `命令已送出 · ${item.desired_temperature}°`
+          : item.source === "queue_failed"
+          ? `命令 #${item.queue_command_id} 執行失敗`
+          : item.source === "queue_full"
+          ? "佇列已滿，命令已丟棄"
+          : item.source === "queue_unhealthy"
+          ? "佇列檢查異常，命令已丟棄"
+          : item.queue_command_id
+          ? `命令 #${item.queue_command_id} 已排入佇列`
+          : "維持目前設定",
+        detail: `${evidence.length ? `${evidence.join("；")}；` : ""}${item.reason}`,
+      };
+    }),
   ].sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 50);
   state.historyRoom = room;
   state.historyReadings = climate.readings ?? [];
@@ -359,6 +380,11 @@ function renderHistoryContent() {
   const airChart = airQualityChart(state.historyReadings, state.historyDays, state.historyZoom);
   const eventRows = historyEventRows(state.historyEvents);
   content.replaceChildren(chart, ...(airChart ? [airChart] : []), ...eventRows);
+  requestAnimationFrame(() => {
+    content.querySelectorAll(".chart-viewport").forEach((viewport) => {
+      viewport.scrollLeft = viewport.scrollWidth - viewport.clientWidth;
+    });
+  });
   if (!state.historyEvents.length) {
     const empty = document.createElement("p");
     empty.className = "history-empty";
@@ -387,7 +413,10 @@ function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth 
   };
   const viewport = document.createElement("div");
   viewport.className = "chart-viewport";
-  viewport.append(svg);
+  const endSpacer = document.createElement("div");
+  endSpacer.className = "chart-end-spacer";
+  endSpacer.style.width = `${rightWidth + 10}px`;
+  viewport.append(svg, endSpacer);
   frame.append(axis("left", leftLabels), viewport, axis("right", rightLabels));
   return frame;
 }
