@@ -185,6 +185,7 @@ function roomCard(room) {
   article.dataset.roomId = room.id;
   const hasRemote = Boolean(room.primary_remote_id && room.remote_provider);
   const isOn = Boolean(room.is_on);
+  const canFeedback = hasRemote && isOn;
   const tvoc = numericValue(room.tvoc);
   const co2 = numericValue(room.co2);
   const airQuality = tvoc === null && co2 === null ? "" : `
@@ -209,7 +210,7 @@ function roomCard(room) {
     return `${presence.display_name}（至 ${expires}）`;
   }).join("、");
   article.innerHTML = `
-    <div class="room-head"><h2></h2><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span></div>
+    <div class="room-head"><h2></h2><div class="room-head-controls"><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span><button class="power-toggle ${isOn ? "on" : "off"}" ${hasRemote ? "" : "disabled"} aria-label="${isOn ? "關閉" : "開啟"}${room.name}冷氣"><span aria-hidden="true">⏻</span>${isOn ? "關機" : "開機"}</button></div></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
     <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}<span>${room.mode || "—"}</span></div>
     ${airQuality}
@@ -217,13 +218,13 @@ function roomCard(room) {
       <span>冷氣目前設定 <b class="target-value">${displayNumber(room.target_temperature)}°</b></span>
       <small>${isOn ? "MyAmbi 依室溫與你的感覺自動調整" : "關機安全鎖已啟用"}</small>
     </div>
-    <p class="feeling-label${hasRemote ? "" : " unavailable"}">${hasRemote ? "你現在需要什麼？" : "請先新增遙控器，才能回報冷熱"}</p>
-    <div class="feelings${hasRemote ? "" : " unavailable"}">
-      <button class="comfort-action feeling cold" data-feeling="-2" ${hasRemote ? "" : "disabled"}><span>🥶</span>太冷</button>
-      <button class="comfort-action feeling hot" data-feeling="2" ${hasRemote ? "" : "disabled"}><span>🥵</span>太熱</button>
-      <button class="comfort-action feeling cold" data-feeling="-1" ${hasRemote ? "" : "disabled"}><span>😣</span>有點冷</button>
-      <button class="comfort-action feeling hot" data-feeling="1" ${hasRemote ? "" : "disabled"}><span>😓</span>有點熱</button>
-      <button class="comfort-action feeling neutral" data-feeling="0" ${hasRemote ? "" : "disabled"}><span>😌</span>剛好</button>
+    <p class="feeling-label${canFeedback ? "" : " unavailable"}">${!hasRemote ? "請先新增遙控器，才能回報冷熱" : isOn ? "你現在需要什麼？" : "冷氣已關閉；開機後才能回報冷熱"}</p>
+    <div class="feelings${canFeedback ? "" : " unavailable"}">
+      <button class="comfort-action feeling cold" data-feeling="-2" ${canFeedback ? "" : "disabled"}><span>🥶</span>太冷</button>
+      <button class="comfort-action feeling hot" data-feeling="2" ${canFeedback ? "" : "disabled"}><span>🥵</span>太熱</button>
+      <button class="comfort-action feeling cold" data-feeling="-1" ${canFeedback ? "" : "disabled"}><span>😣</span>有點冷</button>
+      <button class="comfort-action feeling hot" data-feeling="1" ${canFeedback ? "" : "disabled"}><span>😓</span>有點熱</button>
+      <button class="comfort-action feeling neutral" data-feeling="0" ${canFeedback ? "" : "disabled"}><span>😌</span>剛好</button>
       <button class="comfort-action workout" ${isOn ? "" : "disabled"}><span>🏃</span>運動後<small>降溫 30 分</small></button>
     </div>
     <div class="presence-row">
@@ -252,7 +253,16 @@ roomGrid.addEventListener("click", async (event) => {
   const room = state.rooms.find((item) => item.id === roomId);
   try {
     setBusy(button, true);
-    if (button.matches(".feeling")) {
+    if (button.matches(".power-toggle")) {
+      const result = await cloud.function("power", { room_id: roomId, on: !room.is_on });
+      showToast(result.decision?.dropped
+        ? result.decision?.source === "queue_unhealthy"
+          ? "佇列自我檢查異常，這次開關命令已丟棄"
+          : "佇列已有 5 筆，這次開關命令已丟棄"
+        : room.is_on
+        ? "關機命令已排入佇列，不會夾帶溫度或風量"
+        : `開機 ${displayNumber(result.decision?.desired_temperature)}° 已作為一筆完整命令排入佇列`);
+    } else if (button.matches(".feeling")) {
       const result = await cloud.function("feedback", { room_id: roomId, feeling: Number(button.dataset.feeling) });
       showToast(result.message);
     } else if (button.matches(".workout")) {
@@ -360,7 +370,7 @@ function renderHistoryContent() {
   }
 }
 
-function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 28, rightWidth = 30 }) {
+function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth = 24, rightWidth = 26 }) {
   const frame = document.createElement("div");
   frame.className = "chart-frame";
   frame.style.setProperty("--chart-left-axis", `${leftWidth}px`);
@@ -662,7 +672,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
   svg.style.width = `${Math.round(760 * zoom)}px`; svg.style.maxWidth = "none";
   section.append(fixedAxisChart(svg, {
     height: 230, zoom, leftLabels: leftAxisLabels, rightLabels: rightAxisLabels,
-    leftWidth: 28, rightWidth: 30,
+    leftWidth: 24, rightWidth: 26,
   }));
   const legend = document.createElement("div"); legend.className = "chart-legend";
   [["tvoc", "TVOC（ppb）"], ["co2", "eCO₂估算（ppm）"]].forEach(([className, text]) => {
