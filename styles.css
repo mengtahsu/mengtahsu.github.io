@@ -284,11 +284,11 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-power-on { fill: rgba(47,111,155,.28); }
 .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .92rem; margin-top: 10px; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }
-.chart-legend i { width: 16px; height: 3px; border-radius: 99px; background: currentColor; }
+.chart-legend i { width: 22px; height: 3px; flex: 0 0 22px; border-radius: 99px; background: currentColor; }
 .chart-legend i.indoor { color: var(--green); }
 .chart-legend i.outdoor { color: var(--warm); }
-.chart-legend i.target { color: var(--blue); }
-.chart-legend i.comfort-target { color: #ae6389; }
+.chart-legend i.target { color: var(--blue); background: repeating-linear-gradient(90deg,currentColor 0 7px,transparent 7px 11px); }
+.chart-legend i.comfort-target { color: #ae6389; background: repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 7px); }
 .chart-legend i.humidity { color: #8470a8; }
 .chart-legend i.power { color: rgba(47,111,155,.65); height: 6px; }
 .chart-legend i.tvoc { color: #bf713f; }

@@ -205,10 +205,7 @@ function roomCard(room) {
     : 0;
   const roomPresence = (state.status?.presence ?? []).filter((presence) => presence.room_id === room.id);
   const mePresent = roomPresence.some((presence) => presence.user_id === state.user?.id);
-  const presenceNames = roomPresence.map((presence) => {
-    const expires = new Date(presence.expires_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-    return `${presence.display_name}（至 ${expires}）`;
-  }).join("、");
+  const presenceNames = roomPresence.map((presence) => presence.display_name).join("、");
   article.innerHTML = `
     <div class="room-head"><h2></h2><div class="room-head-controls"><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span><button class="power-toggle ${isOn ? "on" : "off"}" ${hasRemote ? "" : "disabled"} aria-label="${isOn ? "關閉" : "開啟"}${room.name}冷氣"><span aria-hidden="true">⏻</span>${isOn ? "關機" : "開機"}</button></div></div>
     <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
@@ -285,9 +282,9 @@ roomGrid.addEventListener("click", async (event) => {
       await showHistory(room);
     } else if (button.matches(".presence-arrive, .presence-leave")) {
       const present = button.matches(".presence-arrive");
-      const result = await cloud.function("presence", { room_id: roomId, present });
+      await cloud.function("presence", { room_id: roomId, present });
       showToast(present
-        ? `已登記在房；到 ${new Date(result.expires_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })} 前有效`
+        ? "已登記在房；會保持到你按「我離開了」或進入其他房間"
         : "已登記離開，後續不再以你的即時偏好為主");
     } else if (button.matches(".auto-toggle")) {
       await cloud.function("automation", { room_id: roomId, enabled: !room.automation_enabled });
