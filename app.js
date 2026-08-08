@@ -231,7 +231,14 @@ function roomCard(room) {
     <div class="room-actions">
       <button class="room-action history">查看紀錄</button>
     </div>
-    ${isAdmin() ? `<button class="room-action auto-toggle">${room.automation_enabled ? "暫停自動控制" : "啟用自動控制"}</button>` : ""}
+    ${isAdmin() ? `
+      <div class="automation-control ${room.automation_enabled ? "active" : "paused"}">
+        <div class="automation-status">
+          <small>自動控制</small>
+          <span>${room.automation_enabled ? "目前正在依你的偏好調整" : "目前已暫停，不會自動調溫"}</span>
+        </div>
+        <button class="room-action auto-toggle">${room.automation_enabled ? "暫停" : "重新啟用"}</button>
+      </div>` : ""}
     ${schedule ? `<div class="schedule-note">${schedule}</div>` : ""}
     ${roomQueue.length ? `<div class="queue-note">佇列第 ${firstQueuePosition} 位 · 此房 ${roomQueue.length} 筆</div>` : ""}
     ${!isOn && room.observed_at ? `<div class="safe-note">安全鎖：關機中，不送溫度或風量</div>` : ""}

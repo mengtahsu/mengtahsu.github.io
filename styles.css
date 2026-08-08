@@ -104,6 +104,14 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .feeling-label.unavailable { color: #99958f; }
 .room-actions { display: flex; gap: 7px; margin-top: 8px; }
 .room-action { flex: 1; border: 0; background: transparent; color: var(--blue); font-size: .78rem; padding: 8px 4px; font-weight: 750; }
+.room-actions .history { min-height: 44px; border: 1px solid rgba(47,111,155,.2); border-radius: 12px; background: rgba(47,111,155,.07); }
+.automation-control { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+.automation-status { min-width: 0; }
+.automation-status small { display: block; color: var(--ink); font-size: .72rem; font-weight: 850; }
+.automation-status span { display: block; margin-top: 2px; color: var(--muted); font-size: .64rem; line-height: 1.35; }
+.automation-control .auto-toggle { flex: 0 0 auto; min-height: 44px; padding: 9px 13px; border-radius: 12px; }
+.automation-control.active .auto-toggle { background: #fff0eb; color: #974938; }
+.automation-control.paused .auto-toggle { background: var(--green-soft); color: var(--green); }
 .presence-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; padding: 8px 10px; border-radius: 12px; background: var(--green-soft); color: var(--green); font-size: .72rem; font-weight: 800; }
 .presence-row .room-action { flex: none; color: var(--green); padding: 4px 2px; }
 .override-note { font-size: .75rem; color: var(--warm); font-weight: 800; margin-top: 8px; text-align: center; }
@@ -353,9 +361,10 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .comfort-action small { margin: 2px 0 0; font-size: .64rem; }
   .comfort-action.neutral, .comfort-action.workout { grid-column: auto; }
   .presence-row { margin-top: 7px; padding: 6px 8px; font-size: .66rem; }
-  .room-actions { margin-top: 3px; }
+  .room-actions { margin-top: 5px; }
   .room-action { padding: 6px 3px; font-size: .7rem; }
-  .room-card > .auto-toggle { align-self: center; }
+  .automation-control { margin-top: 13px; padding-top: 12px; }
+  .automation-control .auto-toggle { min-width: 78px; padding-inline: 12px; font-size: .72rem; }
   .schedule-note, .queue-note, .safe-note { margin-top: 4px; padding: 5px 7px; font-size: .64rem; }
   .override-note { margin-top: 4px; font-size: .66rem; }
   .settings-grid .wide { grid-column: auto; }
