@@ -201,7 +201,7 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .plain-fieldset { border: 0; padding: 0; margin: 18px 0 0; }
 .plain-fieldset legend { color: var(--muted); font-size: .82rem; font-weight: 800; margin-bottom: 9px; }
 .schedules-list, .locations-list { display: grid; gap: 10px; margin-top: 20px; }
-.schedule-row { display: grid; grid-template-columns: minmax(130px,1fr) auto 120px 120px auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
+.schedule-row { display: grid; grid-template-columns: minmax(130px,1fr) auto 110px 110px 125px auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.55); }
 .schedule-row label { margin: 0; }
 .schedule-room { display: grid; gap: 3px; align-self: center; }
 .schedule-room span { color: var(--muted); font-size: .72rem; }

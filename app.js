@@ -162,7 +162,7 @@ function numericValue(value) {
 function renderRooms() {
   $("#greeting").textContent = `${greeting()}，${displayName()}`;
   const onlineRooms = state.rooms.filter((room) => room.observed_at).length;
-  const queueCapacity = Number(state.status?.queue_capacity ?? 5);
+  const queueCapacity = Number(state.status?.queue_capacity ?? 10);
   const queueActive = Number(state.status?.queue_active_count ?? state.queue.length);
   const queueFree = Number(state.status?.queue_free_slots ?? Math.max(0, queueCapacity - queueActive));
   const queueHealth = state.status?.queue_healthy === true ? "" : "（檢查異常）";
@@ -197,7 +197,7 @@ function roomCard(room) {
     ? new Date(room.override_ends_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
     : null;
   const schedule = room.schedule_enabled
-    ? `${String(room.scheduled_on).slice(0, 5)} 開 · ${String(room.scheduled_off).slice(0, 5)} 關`
+    ? `${String(room.scheduled_on).slice(0, 5)} 開 · ${String(room.scheduled_off).slice(0, 5)} 關 · 夜間最多 ${Number(room.night_change_limit ?? 8)} 次`
     : null;
   const roomQueue = state.queue.filter((command) => command.room_id === room.id);
   const firstQueuePosition = roomQueue.length
@@ -258,7 +258,7 @@ roomGrid.addEventListener("click", async (event) => {
       showToast(result.decision?.dropped
         ? result.decision?.source === "queue_unhealthy"
           ? "佇列自我檢查異常，這次開關命令已丟棄"
-          : "佇列已有 5 筆，這次開關命令已丟棄"
+          : "全系統佇列已有 10 筆，這次開關命令已丟棄"
         : room.is_on
         ? "關機命令已排入佇列，不會夾帶溫度或風量"
         : `開機 ${displayNumber(result.decision?.desired_temperature)}° 已作為一筆完整命令排入佇列`);
@@ -272,7 +272,7 @@ roomGrid.addEventListener("click", async (event) => {
         : result.decision?.dropped
         ? result.decision?.source === "queue_unhealthy"
           ? "佇列自我檢查異常，這次降溫命令已丟棄"
-          : "佇列已有 5 筆，這次降溫命令已丟棄"
+          : "全系統佇列已有 10 筆，這次降溫命令已丟棄"
         : "降溫命令已排入佇列，將依序送出");
     } else if (button.matches(".cancel-override")) {
       const result = await cloud.function("cancel-override", { room_id: roomId });
@@ -977,6 +977,7 @@ function renderSchedules() {
       <label class="schedule-toggle"><input name="enabled" type="checkbox" ${room.schedule_enabled ? "checked" : ""}>啟用</label>
       <label>開機<input name="scheduled_on" type="time" value="${String(room.scheduled_on || "21:00").slice(0, 5)}"></label>
       <label>關機<input name="scheduled_off" type="time" value="${String(room.scheduled_off || "08:00").slice(0, 5)}"></label>
+      <label>夜間最多調整<input name="night_change_limit" type="number" min="0" max="20" step="1" value="${Number(room.night_change_limit ?? 8)}"></label>
       <button class="secondary" type="submit">儲存</button>
     `;
     form.querySelector("strong").textContent = room.name;
@@ -1115,6 +1116,7 @@ $("#schedules-list").addEventListener("submit", async (event) => {
       enabled: values.get("enabled") === "on",
       scheduled_on: values.get("scheduled_on"),
       scheduled_off: values.get("scheduled_off"),
+      night_change_limit: Number(values.get("night_change_limit")),
     });
     showToast("開關機時間已儲存");
     await loadSettings();

@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=42">
+  <link rel="stylesheet" href="/styles.css?v=43">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -184,7 +184,7 @@
           <section class="panel wide admin-only" data-settings-page="rooms" data-settings-order="5">
             <span class="step">每天自動執行</span>
             <h2>各房間開關機時間</h2>
-            <p>關機狀態會啟動安全鎖，不執行溫度或風量演算法；到排程開機時間，則一次用正確溫度開機。</p>
+            <p>關機狀態會啟動安全鎖；到排程開機時間會一次用正確溫度開機。每個房間可設定夜間自動調整上限，預設 8 次；你主動回報冷熱或操作後造成的調整不計入上限。</p>
             <div id="schedules-list" class="schedules-list"></div>
           </section>
 
@@ -247,8 +247,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=42"></script>
-  <script src="/cloud-client.js?v=42"></script>
-  <script src="/app.js?v=42" defer></script>
+  <script src="/config.js?v=43"></script>
+  <script src="/cloud-client.js?v=43"></script>
+  <script src="/app.js?v=43" defer></script>
 </body>
 </html>
