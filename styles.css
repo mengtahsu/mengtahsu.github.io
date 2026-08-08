@@ -279,6 +279,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-series.outdoor { stroke: var(--warm); }
 .chart-series.target { stroke: var(--blue); stroke-dasharray: 7 4; }
 .chart-series.comfort-target { stroke: #ae6389; stroke-dasharray: 2 5; }
+.chart-series.historical-comfort-target { stroke: #70638f; stroke-dasharray: 10 4 2 4; }
 .chart-series.humidity { stroke: #8470a8; stroke-width: 1.8; opacity: .8; }
 .chart-series.tvoc { stroke: #bf713f; }
 .chart-series.co2 { stroke: #3d7896; }
@@ -290,6 +291,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-legend i.outdoor { color: var(--warm); }
 .chart-legend i.target { color: var(--blue); background: repeating-linear-gradient(90deg,currentColor 0 7px,transparent 7px 11px); }
 .chart-legend i.comfort-target { color: #ae6389; background: repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 7px); }
+.chart-legend i.historical-comfort-target { color: #70638f; background: repeating-linear-gradient(90deg,currentColor 0 8px,transparent 8px 11px,currentColor 11px 13px,transparent 13px 17px); }
 .chart-legend i.humidity { color: #8470a8; }
 .chart-legend i.power { color: rgba(47,111,155,.65); height: 6px; }
 .chart-legend i.tvoc { color: #bf713f; }

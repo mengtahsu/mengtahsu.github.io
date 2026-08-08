@@ -1,5 +1,5 @@
 const cloud = new window.MyAmbiCloud(window.MYAMBI_CONFIG);
-const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], sleep: null, allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, historySeries: { temperature: true, outdoor_temperature: true, target_temperature: true, comfort_target_temperature: true, humidity: true, power: true }, refreshTimer: null };
+const state = { status: null, user: null, households: [], household: null, rooms: [], queue: [], users: [], platformUsers: [], sensiboDevices: [], sleep: null, allRooms: [], roomChoices: [], learning: [], learningContext: null, historyRoom: null, historyReadings: [], historyEvents: [], historyDays: 1, historyZoom: 1, historySeries: { temperature: true, outdoor_temperature: true, target_temperature: true, comfort_target_temperature: true, historical_comfort_target_temperature: true, humidity: true, power: true }, refreshTimer: null };
 const $ = (selector) => document.querySelector(selector);
 const authView = $("#auth-view");
 const appView = $("#app-view");
@@ -457,6 +457,13 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   }
 
   const summaryValues = (key) => readings.map((row) => numericValue(row[key])).filter((value) => value !== null);
+  const latestValue = (key) => {
+    for (let index = readings.length - 1; index >= 0; index -= 1) {
+      const value = numericValue(readings[index][key]);
+      if (value !== null) return value;
+    }
+    return null;
+  };
   const indoorSummary = summaryValues("temperature");
   const outdoorSummary = summaryValues("outdoor_temperature");
   const humiditySummary = summaryValues("humidity");
@@ -469,6 +476,8 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     ["室外平均", average(outdoorSummary), "°"],
     ["平均濕度", average(humiditySummary), "%"],
     ["冷氣運轉", readings.length ? readings.filter((row) => row.is_on === true).length / readings.length * 100 : null, "%"],
+    ["目前舒適目標", latestValue("comfort_target_temperature"), "°"],
+    ["歷史加權舒適", latestValue("historical_comfort_target_temperature"), "°"],
     ["資料點", readings.length, " 筆"],
   ];
   for (const [labelText, rawValue, suffix] of summaryItems) {
@@ -484,7 +493,8 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   seriesControls.className = "chart-series-controls";
   const seriesOptions = [
     ["temperature", "室內"], ["outdoor_temperature", "室外"],
-    ["target_temperature", "冷氣設定"], ["comfort_target_temperature", "舒適目標"],
+    ["target_temperature", "冷氣設定"], ["comfort_target_temperature", "即時舒適目標"],
+    ["historical_comfort_target_temperature", "歷史加權舒適"],
     ["humidity", "濕度"],
     ["power", "運轉狀態"],
   ];
@@ -499,7 +509,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("viewBox", "0 0 760 300");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "室內、室外、冷氣設定、舒適目標溫度與濕度隨時間變化");
+  svg.setAttribute("aria-label", "室內、室外、冷氣設定、即時舒適目標、歷史加權舒適溫度與濕度隨時間變化");
   const margin = { left: 10, right: 10, top: 20, bottom: 34 };
   const plotWidth = 760 - margin.left - margin.right;
   const plotHeight = 300 - margin.top - margin.bottom;
@@ -512,6 +522,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     numericValue(row.outdoor_temperature),
     numericValue(row.target_temperature),
     numericValue(row.comfort_target_temperature),
+    numericValue(row.historical_comfort_target_temperature),
   ]).filter((value) => value !== null);
   if (!temperatureValues.length) {
     const empty = document.createElement("p");
@@ -593,6 +604,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   if (state.historySeries.outdoor_temperature) addPath("outdoor_temperature", yTemperature, "outdoor");
   if (state.historySeries.target_temperature) addPath("target_temperature", yTemperature, "target");
   if (state.historySeries.comfort_target_temperature) addPath("comfort_target_temperature", yTemperature, "comfort-target");
+  if (state.historySeries.historical_comfort_target_temperature) addPath("historical_comfort_target_temperature", yTemperature, "historical-comfort-target");
   if (state.historySeries.humidity) addPath("humidity", yHumidity, "humidity");
   // Keep the SVG close to its 760-unit viewBox width so axis text does not
   // shrink to unreadable sizes on an iPhone. The viewport scrolls sideways.
@@ -604,7 +616,7 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
 
   const legend = document.createElement("div");
   legend.className = "chart-legend";
-  [["indoor", "室內溫度", "temperature"], ["outdoor", "室外溫度", "outdoor_temperature"], ["target", "冷氣設定", "target_temperature"], ["comfort-target", "舒適目標", "comfort_target_temperature"], ["humidity", "室內濕度", "humidity"], ["power", "冷氣運轉", "power"]].filter(([, , key]) => state.historySeries[key]).forEach(([className, text]) => {
+  [["indoor", "室內溫度", "temperature"], ["outdoor", "室外溫度", "outdoor_temperature"], ["target", "冷氣設定", "target_temperature"], ["comfort-target", "即時舒適目標", "comfort_target_temperature"], ["historical-comfort-target", "歷史加權舒適", "historical_comfort_target_temperature"], ["humidity", "室內濕度", "humidity"], ["power", "冷氣運轉", "power"]].filter(([, , key]) => state.historySeries[key]).forEach(([className, text]) => {
     const item = document.createElement("span");
     item.innerHTML = `<i class="${className}"></i>${text}`;
     legend.append(item);
@@ -710,7 +722,7 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
 
 function downloadHistoryCsv() {
   if (!state.historyRoom || !state.historyReadings.length) return showToast("目前沒有可下載的資料", true);
-  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "comfort_target_temperature", "humidity", "outdoor_humidity", "tvoc", "co2", "is_on"];
+  const columns = ["observed_at", "temperature", "outdoor_temperature", "target_temperature", "comfort_target_temperature", "historical_comfort_target_temperature", "humidity", "outdoor_humidity", "tvoc", "co2", "is_on"];
   const escapeCsv = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
   const csv = [columns.join(","), ...state.historyReadings.map((row) => columns.map((key) => escapeCsv(row[key])).join(","))].join("\n");
   const link = document.createElement("a");
