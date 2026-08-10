@@ -87,6 +87,10 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .temperature sup { font-size: 1.25rem; vertical-align: top; position: relative; top: .55rem; letter-spacing: 0; }
 .climate-meta { display: flex; gap: 16px; color: var(--muted); font-size: .84rem; }
 .target-row { display: grid; justify-items: center; gap: 4px; margin: 25px 0 18px; padding: 12px 13px; border-radius: 16px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
+.target-row.mode-fan { background: rgba(47,111,155,.08); border-color: rgba(47,111,155,.22); }
+.target-row.mode-heat { background: rgba(155,62,43,.08); border-color: rgba(155,62,43,.2); }
+.target-row.mode-off { background: rgba(119,115,108,.08); }
+.current-setting { font-size: 1.02rem; font-weight: 900; text-align: center; }
 .target-row small { color: var(--muted); font-size: .68rem; text-align: center; }
 .target-value { font-weight: 900; min-width: 54px; text-align: center; }
 .feeling-label { color: var(--muted); font-size: .95rem; font-weight: 750; margin: auto 0 10px; }
