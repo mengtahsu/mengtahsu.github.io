@@ -462,6 +462,39 @@ function fixedAxisChart(svg, { height, zoom, leftLabels, rightLabels, leftWidth 
   return frame;
 }
 
+function chartTimeTicks(start, end, days) {
+  const count = days === 1 ? 9 : days === 7 ? 8 : 7;
+  const span = Math.max(1, end - start);
+  return Array.from({ length: count }, (_, index) => {
+    const position = index / (count - 1);
+    return { at: start + span * position, position };
+  });
+}
+
+function chartTimeLabel(at, days) {
+  const date = new Date(at);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  if (days === 1) return `${hour}:${minute}`;
+  if (days === 7) return `${month}/${day} ${hour}時`;
+  return `${month}/${day}`;
+}
+
+function addChartTimeAxis({ svg, line, label, x, start, end, days, plotTop, plotBottom, labelY }) {
+  chartTimeTicks(start, end, days).forEach(({ at, position }) => {
+    const xValue = x(at);
+    line(xValue, plotTop, xValue, plotBottom, "chart-time-gridline");
+    label(
+      chartTimeLabel(at, days),
+      xValue,
+      labelY,
+      position === 0 ? "start" : position === 1 ? "end" : "middle",
+    );
+  });
+}
+
 function climateChart(rawReadings, days = 1, zoom = 1) {
   const section = document.createElement("section");
   section.className = "climate-chart";
@@ -602,10 +635,9 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     leftAxisLabels.push({ text: `${temp.toFixed(0)}°`, y });
     rightAxisLabels.push({ text: `${100 - index * 25}%`, y });
   }
-  const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
-  [0, 0.5, 1].forEach((position) => {
-    const at = start + timeSpan * position;
-    label(timeFormat.format(new Date(at)), x(at), 294, position === 0 ? "start" : position === 1 ? "middle" : "end");
+  addChartTimeAxis({
+    svg, line, label, x, start, end, days,
+    plotTop: margin.top, plotBottom: margin.top + plotHeight, labelY: 294,
   });
 
   if (state.historySeries.power) {
@@ -731,10 +763,9 @@ function airQualityChart(rawReadings, days = 1, zoom = 1) {
     leftAxisLabels.push({ text: `${Math.round(tvocMax * (1 - index / 4))}`, y });
     rightAxisLabels.push({ text: `${Math.round(co2Max - (co2Max - co2Min) * index / 4)}`, y });
   }
-  const timeFormat = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit" });
-  [0, 0.5, 1].forEach((position) => {
-    const at = start + span * position;
-    label(timeFormat.format(new Date(at)), x(at), 224, position === 0 ? "start" : position === 1 ? "middle" : "end");
+  addChartTimeAxis({
+    svg, line, label, x, start, end, days,
+    plotTop: margin.top, plotBottom: margin.top + plotHeight, labelY: 224,
   });
   const addPath = (key, y, className) => {
     let data = ""; let drawing = false;

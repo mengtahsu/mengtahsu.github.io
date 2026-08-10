@@ -285,6 +285,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
 .chart-end-spacer { flex: 0 0 auto; height: 1px; }
 .climate-chart svg { display: block; flex: 0 0 auto; width: 100%; height: auto; overflow: visible; }
 .chart-gridline { stroke: rgba(23,33,29,.1); stroke-width: 1; }
+.chart-time-gridline { stroke: rgba(23,33,29,.07); stroke-width: 1; stroke-dasharray: 3 5; }
 .chart-axis-label { fill: var(--muted); font-size: 13px; font-weight: 650; }
 .chart-series { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .chart-series.indoor { stroke: var(--green); }
