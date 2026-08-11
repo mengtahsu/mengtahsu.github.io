@@ -21,7 +21,11 @@ class MyAmbiCloud {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (!params.get("access_token")) return null;
     this.callbackType = params.get("type") || null;
-    if (["recovery", "invite"].includes(this.callbackType)) {
+    const callbackQuery = new URLSearchParams(location.search);
+    const isPasswordCallback = ["recovery", "invite"].includes(this.callbackType) ||
+      callbackQuery.get("password-reset") === "1" ||
+      callbackQuery.get("set-password") === "1";
+    if (isPasswordCallback) {
       localStorage.setItem(this.passwordResetKey, "1");
       // The link may be opened on a phone that previously remembered a
       // different account. Never let that old device token take over later.
