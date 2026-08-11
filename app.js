@@ -862,7 +862,8 @@ function selectSettingsPage(page = "") {
 }
 
 async function showSettings(page = settingsPageFromHash()) {
-  const selected = typeof page === "string" ? (settingsPages[page] ? page : "") : settingsPageFromHash();
+  let selected = typeof page === "string" ? (settingsPages[page] ? page : "") : settingsPageFromHash();
+  if (!isAdmin() && ["members", "platform"].includes(selected)) selected = "";
   $("#history-dialog").open && $("#history-dialog").close();
   $("#rooms-view").classList.add("hidden");
   $("#settings-view").classList.remove("hidden");
@@ -1677,5 +1678,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=55").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=56").then((registration) => registration.update()).catch(() => {});
 }
