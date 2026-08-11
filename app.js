@@ -54,6 +54,7 @@ function showAuth(mode) {
   hideBoot();
   authView.classList.remove("hidden");
   appView.classList.add("hidden");
+  $("#join-view").classList.toggle("hidden", mode !== "join");
   $("#setup-form").classList.toggle("hidden", mode !== "setup");
   $("#login-form").classList.toggle("hidden", mode !== "login");
   $("#password-reset-form").classList.toggle("hidden", mode !== "password-reset");
@@ -61,6 +62,64 @@ function showAuth(mode) {
   const trusted = mode === "login" && cloud.hasTrustedDevice();
   $("#trusted-device-login").classList.toggle("hidden", !trusted);
   $("#trusted-device-copy").classList.toggle("hidden", !trusted);
+}
+
+function showJoin(invitation, user = null) {
+  showAuth("join");
+  $("#join-loading").classList.add("hidden");
+  $("#join-error").classList.add("hidden");
+  $("#join-content").classList.remove("hidden");
+  $("#join-household-name").textContent = invitation.household_name || "受邀家庭";
+  $("#join-expiry").textContent = `連結有效至 ${new Date(invitation.expires_at).toLocaleString("zh-TW")}；使用一次後即失效。`;
+  $("#join-current-account").classList.toggle("hidden", !user);
+  $("#join-auth-options").classList.toggle("hidden", Boolean(user));
+  if (user) $("#join-current-email").textContent = user.email || displayName();
+}
+
+function showJoinError(message) {
+  showAuth("join");
+  $("#join-loading").classList.add("hidden");
+  $("#join-content").classList.add("hidden");
+  $("#join-error").textContent = `${message}。請聯絡家庭管理員重新產生邀請連結。`;
+  $("#join-error").classList.remove("hidden");
+}
+
+function leaveJoinURL() {
+  const query = new URLSearchParams(location.search);
+  ["join", "error", "error_code", "error_description"].forEach((key) => query.delete(key));
+  history.replaceState({}, document.title, `${location.pathname}${query.size ? `?${query}` : ""}#rooms`);
+}
+
+async function redeemJoin(token) {
+  const result = await cloud.householdInvite("redeem", { token });
+  cloud.setActiveHousehold(result.household_id);
+  cloud.clearCallbackError();
+  leaveJoinURL();
+  await boot();
+  showToast(result.already_redeemed ? `你已經在「${result.household_name}」` : `已加入「${result.household_name}」`);
+}
+
+async function handleJoinFlow(token) {
+  let invitation;
+  try {
+    invitation = await cloud.invitePreview(token);
+  } catch (previewError) {
+    // A confirmation page can be reloaded after the token was consumed. The
+    // transactional redeem endpoint is idempotent for the same account.
+    const user = await cloud.user().catch(() => null);
+    if (user) {
+      state.user = user;
+      try { await redeemJoin(token); return; } catch (_) {}
+    }
+    showJoinError(previewError.message);
+    return;
+  }
+  state.user = await cloud.user();
+  if (state.user && cloud.callbackType === "signup") {
+    try { await redeemJoin(token); return; }
+    catch (error) { showJoinError(error.message); return; }
+  }
+  showJoin(invitation, state.user);
 }
 
 function displayName() {
@@ -102,10 +161,19 @@ async function boot() {
       showToast("尚未設定 Supabase 專案；請先完成 web/config.js", true);
       return;
     }
+    const joinToken = cloud.joinToken();
     if (cloud.callbackError) {
+      if (joinToken) {
+        showJoinError(friendlyCallbackError(cloud.callbackError));
+        return;
+      }
       showAuth("login");
       $("#auth-error").textContent = `${friendlyCallbackError(cloud.callbackError)}。如果還沒加入，請家庭管理員用同一個 Email 重新產生邀請；如果已加入，請用下方「第一次設定密碼／忘記密碼」。`;
       $("#auth-error").classList.remove("hidden");
+      return;
+    }
+    if (joinToken) {
+      await handleJoinFlow(joinToken);
       return;
     }
     state.user = await cloud.user();
@@ -1337,6 +1405,64 @@ $("#login-form").addEventListener("submit", async (event) => {
   finally { setBusy(button, false); }
 });
 
+$("#join-confirm").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  setBusy(button, true);
+  try { await redeemJoin(cloud.joinToken()); }
+  catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#join-switch-account").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  setBusy(button, true);
+  try {
+    await cloud.signOut();
+    state.user = null;
+    const invitation = await cloud.invitePreview(cloud.joinToken());
+    showJoin(invitation, null);
+  } catch (error) { showToast(error.message, true); }
+  finally { setBusy(button, false); }
+});
+
+$("#join-login-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = event.submitter;
+  setBusy(button, true);
+  try {
+    const values = Object.fromEntries(new FormData(form));
+    await cloud.signInWithPassword(values.email, values.password);
+    await redeemJoin(cloud.joinToken());
+  } catch (error) {
+    showToast([400, 401].includes(Number(error?.status)) ? "Email 或密碼不正確" : error.message, true);
+  } finally { setBusy(button, false); }
+});
+
+$("#join-signup-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = event.submitter;
+  setBusy(button, true);
+  try {
+    const values = Object.fromEntries(new FormData(form));
+    if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
+    const result = await cloud.signUpWithPassword(
+      values.email,
+      values.password,
+      values.display_name,
+      cloud.joinToken(),
+    );
+    if (result.access_token) {
+      await redeemJoin(cloud.joinToken());
+      return;
+    }
+    form.classList.add("hidden");
+    $("#join-signup-sent").classList.remove("hidden");
+  } catch (error) { showToast(friendlyEmailError(error), true); }
+  finally { setBusy(button, false); }
+});
+
 $("#request-password-reset").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   const email = new FormData($("#login-form")).get("email");
@@ -1489,40 +1615,17 @@ $("#room-management-list").addEventListener("submit", async (event) => {
 $("#member-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const formElement = event.currentTarget; const button = event.submitter; setBusy(button, true);
   try {
-    const form = new FormData(formElement);
-    const result = await cloud.function("invite-member", {
-      display_name: form.get("display_name"), email: form.get("email"),
-    });
-    formElement.reset();
-    if (result.invite_link) {
-      $("#invite-link").value = result.invite_link;
-      $("#invite-result-title").textContent = result.invitation_state === "renewed"
-        ? "把這個新的私人邀請連結傳給家人"
-        : "把這個私人邀請連結傳給家人";
-      $("#invite-new-steps").classList.remove("hidden");
-      $("#invite-expiry-note").classList.remove("hidden");
-      $("#copy-invite-link").textContent = "複製邀請連結";
-      $("#invite-result").classList.remove("hidden");
-      showToast(result.invitation_state === "renewed"
-        ? "舊連結已更新，請把這個新連結傳給家人"
-        : "已建立私人邀請連結，請複製傳給家人");
-    } else {
-      $("#invite-link").value = `${location.origin}${location.pathname}`;
-      $("#invite-result-title").textContent = result.already_member
-        ? "這個帳號本來就在這個家，權限沒有被更改"
-        : "帳號已加入這個家";
-      $("#invite-new-steps").classList.add("hidden");
-      $("#invite-expiry-note").classList.add("hidden");
-      $("#copy-invite-link").textContent = "複製登入網址";
-      $("#invite-result").classList.remove("hidden");
-      showToast(result.already_member
-        ? "沒有建立重複成員，也沒有更改原本權限"
-        : "請把登入網址傳給家人；忘記密碼可在登入頁重新設定");
-    }
-    await loadSettings();
+    const result = await cloud.householdInvite("create");
+    $("#invite-link").value = result.invite_link;
+    $("#invite-result-title").textContent = "把這個私人邀請連結傳給家人";
+    $("#invite-new-steps").classList.remove("hidden");
+    $("#invite-expiry-note").classList.remove("hidden");
+    $("#copy-invite-link").textContent = "複製邀請連結";
+    $("#invite-result").classList.remove("hidden");
+    showToast("邀請連結已產生；先前未使用的連結已失效");
   } catch (error) {
     const message = /逾時|無法連線|network|fetch/i.test(String(error?.message || ""))
-      ? "目前無法確認邀請是否完成；可以用同一個 Email 安全重試，不會建立重複成員。"
+      ? "目前無法確認連結是否產生；網路恢復後可安全地重新產生。"
       : error.message;
     showToast(message, true);
   }
@@ -1678,5 +1781,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=56").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=57").then((registration) => registration.update()).catch(() => {});
 }

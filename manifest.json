@@ -2,7 +2,7 @@
   "name": "MyAmbi",
   "short_name": "MyAmbi",
   "description": "會記得你感覺的冷氣控制器",
-  "start_url": "/?v=56",
+  "start_url": "/?v=57",
   "display": "standalone",
   "background_color": "#f7f3ec",
   "theme_color": "#f7f3ec",

@@ -165,7 +165,8 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .button-row { display: flex; gap: 9px; flex-wrap: wrap; }
 .inline-household-form { display: grid; grid-template-columns: minmax(180px,1fr) auto; align-items: end; gap: 12px; max-width: 620px; }
 .inline-household-form label { margin-bottom: 0; }
-.member-form { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0 18px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.member-form { display: grid; grid-template-columns: 1fr; align-items: end; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.member-form p { margin: 0; }
 .member-form fieldset { grid-column: 1/-1; border: 0; padding: 0; margin: 5px 0 18px; }
 .member-form legend { color: var(--muted); font-size: .82rem; font-weight: 800; margin-bottom: 8px; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -207,6 +208,17 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .invite-steps li { margin: 6px 0; }
 .invite-result .invite-expiry-note { margin: 8px 0 12px; color: var(--muted); font-size: .84rem; }
 .invite-link-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.join-view { align-self: center; }
+.join-view h2 { margin-top: 4px; }
+.join-account { padding: 16px; border-radius: 16px; background: var(--green-soft); }
+.join-account .primary { margin-top: 8px; }
+.join-auth-options { display: grid; gap: 18px; }
+.join-form { display: grid; gap: 12px; }
+.join-form h3 { margin: 0; }
+.join-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.join-divider::before, .join-divider::after { content: ""; height: 1px; background: var(--line); flex: 1; }
+.success-note { padding: 14px; border-radius: 14px; background: var(--green-soft); }
+.success-note p { margin-bottom: 0; }
 .platform-users-list { display: grid; gap: 9px; margin-top: 18px; }
 .platform-user-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.55); }
 .platform-user-row strong, .platform-user-row span { display: block; }

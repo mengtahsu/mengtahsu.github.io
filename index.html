@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=56">
+  <link rel="stylesheet" href="/styles.css?v=57">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -28,6 +28,45 @@
         <h1>MyAmbi</h1>
         <p class="lead">依照時間、房間和你的感覺，讓冷氣慢慢學會什麼叫剛好。</p>
       </div>
+
+      <section id="join-view" class="panel join-view hidden">
+        <p class="eyebrow">家庭邀請</p>
+        <div id="join-loading"><h2>正在確認邀請連結…</h2></div>
+        <div id="join-content" class="hidden">
+          <h2>加入「<span id="join-household-name"></span>」</h2>
+          <p>這是一次性邀請。請用你自己的 MyAmbi 帳號加入；管理者不需要事先知道你的 Email。</p>
+          <p id="join-expiry" class="source-note"></p>
+
+          <div id="join-current-account" class="join-account hidden">
+            <p>目前登入帳號：<strong id="join-current-email"></strong></p>
+            <button id="join-confirm" class="primary" type="button">確認用這個帳號加入</button>
+            <button id="join-switch-account" class="text-button" type="button">改用另一個帳號</button>
+          </div>
+
+          <div id="join-auth-options" class="join-auth-options hidden">
+            <form id="join-login-form" class="join-form">
+              <h3>我已有 MyAmbi 帳號</h3>
+              <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+              <label>密碼<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required></label>
+              <button class="primary" type="submit">登入並加入</button>
+            </form>
+            <div class="join-divider"><span>或</span></div>
+            <form id="join-signup-form" class="join-form">
+              <h3>第一次使用 MyAmbi</h3>
+              <label>你的名稱<input name="display_name" autocomplete="name" maxlength="80" required placeholder="例如：小晴"></label>
+              <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+              <label>設定密碼<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+              <label>再輸入一次<input name="password_confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+              <button class="secondary" type="submit">建立帳號並寄確認信</button>
+            </form>
+            <div id="join-signup-sent" class="success-note hidden">
+              <strong>確認信已寄出</strong>
+              <p>請到信箱點一次確認連結；回到 MyAmbi 後就會加入這個家。若這個 Email 已有帳號，請改用上方登入。</p>
+            </div>
+          </div>
+        </div>
+        <div id="join-error" class="error-note hidden"></div>
+      </section>
 
       <form id="setup-form" class="panel hidden">
         <h2>建立 MyAmbi 家庭</h2>
@@ -201,18 +240,17 @@
             <span class="step">邀請家人</span>
             <h2>家庭成員</h2>
             <form id="member-form" class="member-form">
-              <label>成員名稱<input name="display_name" maxlength="80" required placeholder="例如：女兒"></label>
-              <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
-              <button class="primary" type="submit">新增成員</button>
+              <p>不用輸入家人的姓名或 Email。產生連結後傳給家人，對方會用自己的帳號加入。</p>
+              <button class="primary" type="submit">產生家庭邀請連結</button>
             </form>
             <div id="invite-result" class="invite-result hidden">
               <strong id="invite-result-title">把這個私人邀請連結傳給家人</strong>
               <ol id="invite-new-steps" class="invite-steps">
-                <li>請家人在 1 小時內開啟連結。</li>
-                <li>設定自己的 MyAmbi 密碼。</li>
-                <li>完成後會直接進入這個家；主畫面 App 也會保持登入。</li>
+                <li>家人在 24 小時內開啟連結。</li>
+                <li>對方用既有帳號登入，或自行建立帳號並確認 Email。</li>
+                <li>確認加入後，這個連結就不能再給第二個人使用。</li>
               </ol>
-              <p id="invite-expiry-note" class="invite-expiry-note">如果連結過期，用同一個 Email 再按一次「新增成員」，就會取得新的連結。請以最後產生的連結為準。</p>
+              <p id="invite-expiry-note" class="invite-expiry-note">重新產生會讓上一個尚未使用的連結立即失效。請只傳送最後產生的連結。</p>
               <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製邀請連結</button></div>
             </div>
             <div id="members-list" class="members-list"></div>
@@ -253,8 +291,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=56"></script>
-  <script src="/cloud-client.js?v=56"></script>
-  <script src="/app.js?v=56" defer></script>
+  <script src="/config.js?v=57"></script>
+  <script src="/cloud-client.js?v=57"></script>
+  <script src="/app.js?v=57" defer></script>
 </body>
 </html>

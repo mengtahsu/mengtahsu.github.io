@@ -26,8 +26,11 @@ class MyAmbiCloud {
     const isPasswordCallback = ["recovery", "invite"].includes(this.callbackType) ||
       callbackQuery.get("password-reset") === "1" ||
       callbackQuery.get("set-password") === "1";
+    const isJoinCallback = Boolean(callbackQuery.get("join"));
     if (isPasswordCallback) {
       localStorage.setItem(this.passwordResetKey, "1");
+    }
+    if (isPasswordCallback || isJoinCallback) {
       // The link may be opened on a phone that previously remembered a
       // different account. Never let that old device token take over later.
       localStorage.removeItem(this.deviceKey);
@@ -50,7 +53,8 @@ class MyAmbiCloud {
     const message = hash.get("error_description") || query.get("error_description") ||
       hash.get("error") || query.get("error");
     if (!message) return null;
-    history.replaceState({}, document.title, location.pathname);
+    ["error", "error_code", "error_description"].forEach((key) => query.delete(key));
+    history.replaceState({}, document.title, `${location.pathname}${query.size ? `?${query}` : ""}`);
     // URLSearchParams already decodes the value. Decoding it again can throw
     // on malformed input and leave the app on a blank screen.
     return String(message).replace(/\+/g, " ");
@@ -180,6 +184,47 @@ class MyAmbiCloud {
       deviceRemembered = false;
     }
     return { ...result, device_remembered: deviceRemembered };
+  }
+
+  async signUpWithPassword(email, password, displayName, joinToken) {
+    const redirect = new URL(location.pathname, location.origin);
+    if (joinToken) redirect.searchParams.set("join", joinToken);
+    const result = await this.request(
+      `${this.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect.toString())}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(email || "").trim().toLowerCase(),
+          password: String(password || ""),
+          data: { display_name: String(displayName || "").trim() },
+        }),
+      },
+      false,
+    );
+    if (result.access_token && result.refresh_token) {
+      localStorage.removeItem(this.deviceKey);
+      localStorage.removeItem(this.deviceUserKey);
+      this.saveSession(result);
+      localStorage.removeItem(this.loggedOutKey);
+      try { await this.registerTrustedDevice(); } catch (_) {}
+    }
+    return result;
+  }
+
+  joinToken() {
+    return new URLSearchParams(location.search).get("join") || "";
+  }
+
+  invitePreview(token) {
+    const query = new URLSearchParams({ action: "preview", token });
+    return this.request(`${this.url}/functions/v1/household-invite?${query}`, { method: "GET" }, false);
+  }
+
+  householdInvite(action, payload = {}) {
+    return this.request(`${this.url}/functions/v1/household-invite`, {
+      method: "POST",
+      body: JSON.stringify({ action, ...payload }),
+    });
   }
 
   passwordResetActive() {
