@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=57">
+  <link rel="stylesheet" href="/styles.css?v=58">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -34,7 +34,7 @@
         <div id="join-loading"><h2>正在確認邀請連結…</h2></div>
         <div id="join-content" class="hidden">
           <h2>加入「<span id="join-household-name"></span>」</h2>
-          <p>這是一次性邀請。請用你自己的 MyAmbi 帳號加入；管理者不需要事先知道你的 Email。</p>
+          <p>請用你自己的 MyAmbi 帳號加入；管理者不需要事先知道你的 Email。</p>
           <p id="join-expiry" class="source-note"></p>
 
           <div id="join-current-account" class="join-account hidden">
@@ -246,9 +246,9 @@
             <div id="invite-result" class="invite-result hidden">
               <strong id="invite-result-title">把這個私人邀請連結傳給家人</strong>
               <ol id="invite-new-steps" class="invite-steps">
-                <li>家人在 24 小時內開啟連結。</li>
+                <li>最多 5 位家人在 24 小時內使用同一連結加入。</li>
                 <li>對方用既有帳號登入，或自行建立帳號並確認 Email。</li>
-                <li>確認加入後，這個連結就不能再給第二個人使用。</li>
+                <li>同一人重複開啟不會多占一個名額。</li>
               </ol>
               <p id="invite-expiry-note" class="invite-expiry-note">重新產生會讓上一個尚未使用的連結立即失效。請只傳送最後產生的連結。</p>
               <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製邀請連結</button></div>
@@ -291,8 +291,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=57"></script>
-  <script src="/cloud-client.js?v=57"></script>
-  <script src="/app.js?v=57" defer></script>
+  <script src="/config.js?v=58"></script>
+  <script src="/cloud-client.js?v=58"></script>
+  <script src="/app.js?v=58" defer></script>
 </body>
 </html>

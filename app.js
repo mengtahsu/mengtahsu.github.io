@@ -70,7 +70,7 @@ function showJoin(invitation, user = null) {
   $("#join-error").classList.add("hidden");
   $("#join-content").classList.remove("hidden");
   $("#join-household-name").textContent = invitation.household_name || "受邀家庭";
-  $("#join-expiry").textContent = `連結有效至 ${new Date(invitation.expires_at).toLocaleString("zh-TW")}；使用一次後即失效。`;
+  $("#join-expiry").textContent = `連結有效至 ${new Date(invitation.expires_at).toLocaleString("zh-TW")}；目前還可加入 ${invitation.remaining_uses} 人。`;
   $("#join-current-account").classList.toggle("hidden", !user);
   $("#join-auth-options").classList.toggle("hidden", Boolean(user));
   if (user) $("#join-current-email").textContent = user.email || displayName();
@@ -1622,7 +1622,7 @@ $("#member-form").addEventListener("submit", async (event) => {
     $("#invite-expiry-note").classList.remove("hidden");
     $("#copy-invite-link").textContent = "複製邀請連結";
     $("#invite-result").classList.remove("hidden");
-    showToast("邀請連結已產生；先前未使用的連結已失效");
+    showToast("可供 5 位家人使用的邀請連結已產生；先前連結已失效");
   } catch (error) {
     const message = /逾時|無法連線|network|fetch/i.test(String(error?.message || ""))
       ? "目前無法確認連結是否產生；網路恢復後可安全地重新產生。"
@@ -1781,5 +1781,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=57").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=58").then((registration) => registration.update()).catch(() => {});
 }
