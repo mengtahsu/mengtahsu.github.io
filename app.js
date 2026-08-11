@@ -35,6 +35,14 @@ function friendlyEmailError(error) {
   return message || "目前無法寄信，請稍後再試。";
 }
 
+function friendlyCallbackError(message) {
+  const detail = String(message || "");
+  if (/invalid|expired|otp_expired|access_denied/i.test(detail)) {
+    return "連結已過期、已使用，或邀請已被取消";
+  }
+  return "連結無法完成確認";
+}
+
 function setBusy(element, busy) {
   if (!element) return;
   element.disabled = busy;
@@ -96,7 +104,7 @@ async function boot() {
     }
     if (cloud.callbackError) {
       showAuth("login");
-      $("#auth-error").textContent = `這個邀請或設定密碼連結已無法使用：${cloud.callbackError}。如果還沒加入，請家庭管理員用同一個 Email 重新產生邀請；如果已加入，請用下方「第一次設定密碼／忘記密碼」。`;
+      $("#auth-error").textContent = `${friendlyCallbackError(cloud.callbackError)}。如果還沒加入，請家庭管理員用同一個 Email 重新產生邀請；如果已加入，請用下方「第一次設定密碼／忘記密碼」。`;
       $("#auth-error").classList.remove("hidden");
       return;
     }
@@ -1669,5 +1677,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=52").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=53").then((registration) => registration.update()).catch(() => {});
 }

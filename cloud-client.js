@@ -23,6 +23,10 @@ class MyAmbiCloud {
     this.callbackType = params.get("type") || null;
     if (["recovery", "invite"].includes(this.callbackType)) {
       localStorage.setItem(this.passwordResetKey, "1");
+      // The link may be opened on a phone that previously remembered a
+      // different account. Never let that old device token take over later.
+      localStorage.removeItem(this.deviceKey);
+      localStorage.removeItem(this.loggedOutKey);
     }
     const session = {
       access_token: params.get("access_token"),
@@ -142,6 +146,9 @@ class MyAmbiCloud {
       },
       false,
     );
+    // A deliberate password login chooses this account for the device. An old
+    // remembered token may belong to a different family member.
+    localStorage.removeItem(this.deviceKey);
     this.saveSession(result);
     localStorage.removeItem(this.loggedOutKey);
     this.clearPasswordReset();
@@ -209,6 +216,7 @@ class MyAmbiCloud {
     }
     this.saveSession(result.session);
     localStorage.removeItem(this.loggedOutKey);
+    this.clearCallbackError();
     return result.session;
   }
 
