@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=58">
+  <link rel="stylesheet" href="/styles.css?v=59">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -36,6 +36,7 @@
           <h2>加入「<span id="join-household-name"></span>」</h2>
           <p>請用你自己的 MyAmbi 帳號加入；管理者不需要事先知道你的 Email。</p>
           <p id="join-expiry" class="source-note"></p>
+          <p id="join-progress" class="action-progress hidden" role="status" aria-live="polite"></p>
 
           <div id="join-current-account" class="join-account hidden">
             <p>目前登入帳號：<strong id="join-current-email"></strong></p>
@@ -59,13 +60,18 @@
               <label>再輸入一次<input name="password_confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
               <button class="secondary" type="submit">建立帳號並寄確認信</button>
             </form>
-            <div id="join-signup-sent" class="success-note hidden">
+            <div id="join-signup-sent" class="success-note hidden" role="status" aria-live="polite">
               <strong>確認信已寄出</strong>
-              <p>請到信箱點一次確認連結；回到 MyAmbi 後就會加入這個家。若這個 Email 已有帳號，請改用上方登入。</p>
+              <p>已寄到 <strong id="join-signup-email"></strong>。請到信箱點一次確認連結；回到 MyAmbi 後會自動加入這個家。</p>
+              <p>沒有收到時先檢查垃圾郵件。60 秒後可以重寄，不必請管理員重建家庭邀請。</p>
+              <div class="button-row">
+                <button id="resend-signup-confirmation" class="secondary" type="button">重新寄確認信</button>
+                <button id="change-signup-email" class="text-button" type="button">改用其他 Email</button>
+              </div>
             </div>
           </div>
         </div>
-        <div id="join-error" class="error-note hidden"></div>
+        <div id="join-error" class="error-note hidden" role="alert"></div>
       </section>
 
       <form id="setup-form" class="panel hidden">
@@ -241,17 +247,18 @@
             <h2>家庭成員</h2>
             <form id="member-form" class="member-form">
               <p>不用輸入家人的姓名或 Email。產生連結後傳給家人，對方會用自己的帳號加入。</p>
-              <button class="primary" type="submit">產生家庭邀請連結</button>
+              <button id="create-invite-button" class="primary" type="submit">產生家庭邀請連結</button>
             </form>
             <div id="invite-result" class="invite-result hidden">
               <strong id="invite-result-title">把這個私人邀請連結傳給家人</strong>
               <ol id="invite-new-steps" class="invite-steps">
-                <li>最多 5 位家人在 24 小時內使用同一連結加入。</li>
+                <li>最多 5 位家人在 7 天內使用同一連結加入，不必當下完成。</li>
                 <li>對方用既有帳號登入，或自行建立帳號並確認 Email。</li>
                 <li>同一人重複開啟不會多占一個名額。</li>
               </ol>
-              <p id="invite-expiry-note" class="invite-expiry-note">重新產生會讓上一個尚未使用的連結立即失效。請只傳送最後產生的連結。</p>
-              <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製邀請連結</button></div>
+              <p id="invite-expiry-note" class="invite-expiry-note">這個連結會保存在這台裝置。若要更換，舊連結會立即失效。</p>
+              <div id="invite-link-row" class="invite-link-row"><input id="invite-link" aria-label="家庭邀請連結" readonly><button id="copy-invite-link" class="secondary" type="button">複製邀請連結</button></div>
+              <button id="replace-invite-link" class="text-button hidden" type="button">找不到原連結，停用舊連結並產生新的</button>
             </div>
             <div id="members-list" class="members-list"></div>
           </section>
@@ -291,8 +298,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=58"></script>
-  <script src="/cloud-client.js?v=58"></script>
-  <script src="/app.js?v=58" defer></script>
+  <script src="/config.js?v=59"></script>
+  <script src="/cloud-client.js?v=59"></script>
+  <script src="/app.js?v=59" defer></script>
 </body>
 </html>

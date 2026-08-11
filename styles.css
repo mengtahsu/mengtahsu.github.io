@@ -208,6 +208,8 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .invite-steps li { margin: 6px 0; }
 .invite-result .invite-expiry-note { margin: 8px 0 12px; color: var(--muted); font-size: .84rem; }
 .invite-link-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.invite-link-row input { overflow: hidden; text-overflow: ellipsis; }
+#replace-invite-link { margin-top: 9px; padding-left: 0; text-align: left; }
 .join-view { align-self: center; }
 .join-view h2 { margin-top: 4px; }
 .join-account { padding: 16px; border-radius: 16px; background: var(--green-soft); }
@@ -215,6 +217,7 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .join-auth-options { display: grid; gap: 18px; }
 .join-form { display: grid; gap: 12px; }
 .join-form h3 { margin: 0; }
+.action-progress { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--blue-soft); color: var(--blue) !important; font-size: .82rem; font-weight: 800; }
 .join-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .join-divider::before, .join-divider::after { content: ""; height: 1px; background: var(--line); flex: 1; }
 .success-note { padding: 14px; border-radius: 14px; background: var(--green-soft); }

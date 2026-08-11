@@ -8,6 +8,8 @@ class MyAmbiCloud {
     this.loggedOutKey = "myambi.logged.out";
     this.passwordResetKey = "myambi.password.reset.active";
     this.householdKey = "myambi.active.household";
+    this.pendingSignupKey = "myambi.pending.signup";
+    this.inviteCachePrefix = "myambi.household.invite.";
     this.callbackType = null;
     this.activeHouseholdId = localStorage.getItem(this.householdKey) || null;
     this.callbackError = this.readCallbackError();
@@ -187,14 +189,14 @@ class MyAmbiCloud {
   }
 
   async signUpWithPassword(email, password, displayName, joinToken) {
-    const redirect = new URL(location.pathname, location.origin);
-    if (joinToken) redirect.searchParams.set("join", joinToken);
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const redirect = this.signupRedirect(joinToken);
     const result = await this.request(
       `${this.url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirect.toString())}`,
       {
         method: "POST",
         body: JSON.stringify({
-          email: String(email || "").trim().toLowerCase(),
+          email: normalizedEmail,
           password: String(password || ""),
           data: { display_name: String(displayName || "").trim() },
         }),
@@ -207,8 +209,55 @@ class MyAmbiCloud {
       this.saveSession(result);
       localStorage.removeItem(this.loggedOutKey);
       try { await this.registerTrustedDevice(); } catch (_) {}
+      this.clearPendingSignup();
+    } else {
+      localStorage.setItem(this.pendingSignupKey, JSON.stringify({
+        email: normalizedEmail,
+        join_token: String(joinToken || ""),
+        requested_at: Date.now(),
+      }));
     }
     return result;
+  }
+
+  signupRedirect(joinToken) {
+    const redirect = new URL(location.pathname, location.origin);
+    if (joinToken) redirect.searchParams.set("join", joinToken);
+    return redirect;
+  }
+
+  pendingSignup(joinToken = "") {
+    try {
+      const pending = JSON.parse(localStorage.getItem(this.pendingSignupKey) || "null");
+      if (!pending?.email) return null;
+      if (joinToken && pending.join_token !== joinToken) return null;
+      return pending;
+    } catch (_) {
+      localStorage.removeItem(this.pendingSignupKey);
+      return null;
+    }
+  }
+
+  clearPendingSignup() {
+    localStorage.removeItem(this.pendingSignupKey);
+  }
+
+  async resendSignupConfirmation(email, joinToken) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const redirect = this.signupRedirect(joinToken);
+    await this.request(
+      `${this.url}/auth/v1/resend?redirect_to=${encodeURIComponent(redirect.toString())}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ type: "signup", email: normalizedEmail }),
+      },
+      false,
+    );
+    localStorage.setItem(this.pendingSignupKey, JSON.stringify({
+      email: normalizedEmail,
+      join_token: String(joinToken || ""),
+      requested_at: Date.now(),
+    }));
   }
 
   joinToken() {
@@ -225,6 +274,35 @@ class MyAmbiCloud {
       method: "POST",
       body: JSON.stringify({ action, ...payload }),
     });
+  }
+
+  cachedHouseholdInvite(householdId) {
+    if (!householdId) return null;
+    const key = `${this.inviteCachePrefix}${householdId}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || "null");
+      if (!cached?.invite_link || new Date(cached.expires_at).getTime() <= Date.now()) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return cached;
+    } catch (_) {
+      localStorage.removeItem(key);
+      return null;
+    }
+  }
+
+  saveHouseholdInvite(householdId, invitation) {
+    if (!householdId || !invitation?.invite_link || !invitation?.expires_at) return;
+    localStorage.setItem(`${this.inviteCachePrefix}${householdId}`, JSON.stringify({
+      invite_link: invitation.invite_link,
+      expires_at: invitation.expires_at,
+      max_uses: invitation.max_uses,
+    }));
+  }
+
+  clearHouseholdInvite(householdId) {
+    if (householdId) localStorage.removeItem(`${this.inviteCachePrefix}${householdId}`);
   }
 
   passwordResetActive() {
