@@ -4,6 +4,7 @@ class MyAmbiCloud {
     this.key = String(config?.publishableKey || "");
     this.storageKey = "myambi.supabase.session";
     this.deviceKey = "myambi.trusted.device";
+    this.deviceUserKey = "myambi.trusted.user";
     this.loggedOutKey = "myambi.logged.out";
     this.passwordResetKey = "myambi.password.reset.active";
     this.householdKey = "myambi.active.household";
@@ -30,6 +31,7 @@ class MyAmbiCloud {
       // The link may be opened on a phone that previously remembered a
       // different account. Never let that old device token take over later.
       localStorage.removeItem(this.deviceKey);
+      localStorage.removeItem(this.deviceUserKey);
       localStorage.removeItem(this.loggedOutKey);
     }
     const session = {
@@ -72,6 +74,19 @@ class MyAmbiCloud {
 
   clearCallbackError() {
     this.callbackError = null;
+  }
+
+  sessionUserId() {
+    try {
+      const payload = this.session?.access_token?.split(".")?.[1];
+      if (!payload) return null;
+      const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+      const decoded = JSON.parse(atob(padded));
+      return typeof decoded.sub === "string" ? decoded.sub : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   baseHeaders(authenticated = true) {
@@ -153,6 +168,7 @@ class MyAmbiCloud {
     // A deliberate password login chooses this account for the device. An old
     // remembered token may belong to a different family member.
     localStorage.removeItem(this.deviceKey);
+    localStorage.removeItem(this.deviceUserKey);
     this.saveSession(result);
     localStorage.removeItem(this.loggedOutKey);
     this.clearPasswordReset();
@@ -194,13 +210,19 @@ class MyAmbiCloud {
   }
 
   async registerTrustedDevice() {
-    if (this.hasTrustedDevice()) return;
+    const currentUserId = this.sessionUserId();
+    const rememberedUserId = localStorage.getItem(this.deviceUserKey);
+    if (this.hasTrustedDevice() && currentUserId && rememberedUserId === currentUserId) return;
+    localStorage.removeItem(this.deviceKey);
+    localStorage.removeItem(this.deviceUserKey);
     const result = await this.request(`${this.url}/functions/v1/auth-handoff`, {
       method: "POST",
       body: JSON.stringify({ action: "register" }),
     });
     if (!result.device_token) throw new Error("無法記住這台裝置");
     localStorage.setItem(this.deviceKey, result.device_token);
+    const registeredUserId = result.user_id || currentUserId;
+    if (registeredUserId) localStorage.setItem(this.deviceUserKey, registeredUserId);
   }
 
   hasTrustedDevice() {
@@ -219,6 +241,7 @@ class MyAmbiCloud {
       throw new Error("無法恢復登入狀態");
     }
     this.saveSession(result.session);
+    if (result.user_id) localStorage.setItem(this.deviceUserKey, result.user_id);
     localStorage.removeItem(this.loggedOutKey);
     this.clearCallbackError();
     return result.session;
@@ -228,7 +251,10 @@ class MyAmbiCloud {
     if (!this.session && this.hasTrustedDevice() && !localStorage.getItem(this.loggedOutKey)) {
       try { await this.restoreDevice(); }
       catch (error) {
-        if (Number(error?.status) === 401) localStorage.removeItem(this.deviceKey);
+        if (Number(error?.status) === 401) {
+          localStorage.removeItem(this.deviceKey);
+          localStorage.removeItem(this.deviceUserKey);
+        }
         else throw error;
       }
     }
@@ -242,7 +268,10 @@ class MyAmbiCloud {
             await this.restoreDevice();
             return await this.request(`${this.url}/auth/v1/user`);
           } catch (restoreError) {
-            if (Number(restoreError?.status) === 401) localStorage.removeItem(this.deviceKey);
+            if (Number(restoreError?.status) === 401) {
+              localStorage.removeItem(this.deviceKey);
+              localStorage.removeItem(this.deviceUserKey);
+            }
             else throw restoreError;
           }
         }
@@ -265,6 +294,7 @@ class MyAmbiCloud {
     }
     this.clearSession();
     localStorage.removeItem(this.deviceKey);
+    localStorage.removeItem(this.deviceUserKey);
     localStorage.setItem(this.loggedOutKey, "1");
   }
 

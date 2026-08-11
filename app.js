@@ -1677,5 +1677,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=54").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=55").then((registration) => registration.update()).catch(() => {});
 }
