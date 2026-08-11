@@ -41,7 +41,9 @@ class MyAmbiCloud {
       hash.get("error") || query.get("error");
     if (!message) return null;
     history.replaceState({}, document.title, location.pathname);
-    return decodeURIComponent(String(message).replace(/\+/g, " "));
+    // URLSearchParams already decodes the value. Decoding it again can throw
+    // on malformed input and leave the app on a blank screen.
+    return String(message).replace(/\+/g, " ");
   }
 
   readSession() {
@@ -58,6 +60,10 @@ class MyAmbiCloud {
   clearSession() {
     this.session = null;
     localStorage.removeItem(this.storageKey);
+  }
+
+  clearCallbackError() {
+    this.callbackError = null;
   }
 
   baseHeaders(authenticated = true) {
@@ -80,10 +86,22 @@ class MyAmbiCloud {
     if (options.body !== undefined && options.body !== null && !headers["Content-Type"]) {
       headers["Content-Type"] = "application/json";
     }
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const controller = options.signal ? null : new AbortController();
+    const timeout = controller ? setTimeout(() => controller.abort(), 30000) : null;
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        ...(controller ? { signal: controller.signal } : {}),
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("連線逾時，請確認網路後重試");
+      if (error instanceof TypeError) throw new Error("目前無法連線，請確認網路後重試");
+      throw error;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
     const raw = await response.text();
     let data = {};
     if (raw.trim()) {
@@ -92,7 +110,11 @@ class MyAmbiCloud {
         throw new Error(response.ok ? "伺服器回應格式不完整，請再試一次" : `HTTP ${response.status}`);
       }
     }
-    if (!response.ok) throw new Error(data.error_description || data.msg || data.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+      const requestError = new Error(data.error_description || data.msg || data.error || `HTTP ${response.status}`);
+      requestError.status = response.status;
+      throw requestError;
+    }
     return data;
   }
 
@@ -123,8 +145,14 @@ class MyAmbiCloud {
     this.saveSession(result);
     localStorage.removeItem(this.loggedOutKey);
     this.clearPasswordReset();
-    await this.registerTrustedDevice();
-    return result;
+    this.clearCallbackError();
+    let deviceRemembered = true;
+    try {
+      await this.registerTrustedDevice();
+    } catch (_) {
+      deviceRemembered = false;
+    }
+    return { ...result, device_remembered: deviceRemembered };
   }
 
   passwordResetActive() {
@@ -187,18 +215,24 @@ class MyAmbiCloud {
   async user() {
     if (!this.session && this.hasTrustedDevice() && !localStorage.getItem(this.loggedOutKey)) {
       try { await this.restoreDevice(); }
-      catch (_) { localStorage.removeItem(this.deviceKey); }
+      catch (error) {
+        if (Number(error?.status) === 401) localStorage.removeItem(this.deviceKey);
+        else throw error;
+      }
     }
     if (!this.session) return null;
     try { return await this.request(`${this.url}/auth/v1/user`); }
     catch (error) {
       this.clearSession();
-      if (error.message === "請先登入" || /401|JWT|token/i.test(error.message)) {
+      if (Number(error?.status) === 401 || error.message === "請先登入" || /401|JWT|token/i.test(error.message)) {
         if (this.hasTrustedDevice() && !localStorage.getItem(this.loggedOutKey)) {
           try {
             await this.restoreDevice();
             return await this.request(`${this.url}/auth/v1/user`);
-          } catch (_) { localStorage.removeItem(this.deviceKey); }
+          } catch (restoreError) {
+            if (Number(restoreError?.status) === 401) localStorage.removeItem(this.deviceKey);
+            else throw restoreError;
+          }
         }
         return null;
       }
@@ -207,11 +241,19 @@ class MyAmbiCloud {
   }
 
   async signOut() {
+    const deviceToken = localStorage.getItem(this.deviceKey);
+    if (this.session && deviceToken) {
+      await this.request(`${this.url}/functions/v1/auth-handoff`, {
+        method: "POST",
+        body: JSON.stringify({ action: "revoke", device_token: deviceToken }),
+      }).catch(() => {});
+    }
     if (this.session) {
       await fetch(`${this.url}/auth/v1/logout`, { method: "POST", headers: this.baseHeaders() }).catch(() => {});
     }
     this.clearSession();
-    if (this.hasTrustedDevice()) localStorage.setItem(this.loggedOutKey, "1");
+    localStorage.removeItem(this.deviceKey);
+    localStorage.setItem(this.loggedOutKey, "1");
   }
 
   function(action, body = {}, method = "POST") {

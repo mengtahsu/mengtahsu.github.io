@@ -24,6 +24,17 @@ function showToast(message, isError = false) {
   showToast.timer = setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
+function friendlyEmailError(error) {
+  const message = String(error?.message || "");
+  if (/rate.?limit|too many/i.test(message)) {
+    return "寄信次數暫時達到上限。請等幾分鐘再試；如果已設定過密碼，可直接登入。";
+  }
+  if (/逾時|無法連線|network|fetch/i.test(message)) {
+    return "目前無法確認是否寄出。請檢查網路和收件匣，幾分鐘後仍未收到再試一次。";
+  }
+  return message || "目前無法寄信，請稍後再試。";
+}
+
 function setBusy(element, busy) {
   if (!element) return;
   element.disabled = busy;
@@ -85,7 +96,7 @@ async function boot() {
     }
     if (cloud.callbackError) {
       showAuth("login");
-      $("#auth-error").textContent = `登入連結無法使用：${cloud.callbackError}。請重新寄一封登入信。`;
+      $("#auth-error").textContent = `這個邀請或設定密碼連結已無法使用：${cloud.callbackError}。如果還沒加入，請家庭管理員用同一個 Email 重新產生邀請；如果已加入，請用下方「第一次設定密碼／忘記密碼」。`;
       $("#auth-error").classList.remove("hidden");
       return;
     }
@@ -93,6 +104,9 @@ async function boot() {
     if (!state.user) return showAuth("login");
     const authParams = new URLSearchParams(location.search);
     if (cloud.passwordResetActive() || authParams.get("password-reset") === "1" || authParams.get("set-password") === "1") {
+      $("#password-account").textContent = state.user.email
+        ? `正在設定：${state.user.email}`
+        : "請為受邀帳號設定密碼";
       history.replaceState({}, document.title, location.pathname);
       return showAuth("password-reset");
     }
@@ -1037,7 +1051,15 @@ function memberRow(member) {
   const labels = { owner: "家庭擁有者", admin: "家庭管理員", member: "家庭成員" };
   const role = document.createElement("div"); role.className = "member-role";
   role.textContent = `${labels[member.role] || "家庭成員"}${member.email ? ` · ${member.email}` : ""}`;
-  identity.append(name, role);
+  const access = document.createElement("div"); access.className = "member-access";
+  if (member.email_confirmed_at) {
+    access.textContent = member.last_sign_in_at ? "已接受邀請並登入" : "Email 已確認，可以登入";
+    access.classList.add("confirmed");
+  } else {
+    access.textContent = "等待接受邀請";
+    access.classList.add("pending");
+  }
+  identity.append(name, role, access);
   row.append(identity);
   if (member.role !== "owner" && !member.is_self) {
     const remove = document.createElement("button");
@@ -1291,11 +1313,16 @@ $("#login-form").addEventListener("submit", async (event) => {
   try {
     $("#auth-error").classList.add("hidden");
     const values = Object.fromEntries(new FormData(form));
-    await cloud.signInWithPassword(values.email, values.password);
+    const result = await cloud.signInWithPassword(values.email, values.password);
     form.reset();
     await boot();
+    if (!result.device_remembered) {
+      showToast("已登入；這台裝置暫時無法啟用快速登入", true);
+    }
   } catch (error) {
-    $("#auth-error").textContent = "Email 或密碼不正確；如果還沒設定密碼，請按下方的設定密碼。";
+    $("#auth-error").textContent = [400, 401].includes(Number(error?.status))
+      ? "Email 或密碼不正確；如果還沒設定密碼，請按下方的設定密碼。"
+      : "目前無法連線，密碼沒有被判定錯誤。請確認網路後再試一次。";
     $("#auth-error").classList.remove("hidden");
   }
   finally { setBusy(button, false); }
@@ -1309,7 +1336,7 @@ $("#request-password-reset").addEventListener("click", async (event) => {
   try {
     await cloud.sendPasswordReset(email);
     showToast("設定密碼信已寄出；請到 Email 點確認連結");
-  } catch (error) { showToast(`無法寄信：${error.message}`, true); }
+  } catch (error) { showToast(friendlyEmailError(error), true); }
   finally { setBusy(button, false); }
 });
 
@@ -1320,12 +1347,19 @@ $("#password-reset-form").addEventListener("submit", async (event) => {
     const values = Object.fromEntries(new FormData(form));
     if (values.password !== values.password_confirm) throw new Error("兩次輸入的密碼不同");
     await cloud.updatePassword(values.password);
-    await cloud.registerTrustedDevice();
     cloud.clearPasswordReset();
     history.replaceState({}, document.title, `${location.pathname}#rooms`);
     form.reset();
-    showToast("密碼已設定，正在回到你的家");
+    let deviceRemembered = true;
+    try {
+      await cloud.registerTrustedDevice();
+    } catch (_) {
+      deviceRemembered = false;
+    }
     await boot();
+    showToast(deviceRemembered
+      ? "密碼已設定，這台裝置已記住登入"
+      : "密碼已設定並已登入；這台裝置暫時無法啟用快速登入", !deviceRemembered);
   } catch (error) {
     const message = error instanceof Error && error.message && error.message !== "null"
       ? error.message
@@ -1453,23 +1487,48 @@ $("#member-form").addEventListener("submit", async (event) => {
     formElement.reset();
     if (result.invite_link) {
       $("#invite-link").value = result.invite_link;
+      $("#invite-result-title").textContent = result.invitation_state === "renewed"
+        ? "把這個新的私人邀請連結傳給家人"
+        : "把這個私人邀請連結傳給家人";
+      $("#invite-new-steps").classList.remove("hidden");
+      $("#invite-expiry-note").classList.remove("hidden");
+      $("#copy-invite-link").textContent = "複製邀請連結";
       $("#invite-result").classList.remove("hidden");
-      showToast("已建立私人邀請連結，請複製傳給家人");
+      showToast(result.invitation_state === "renewed"
+        ? "舊連結已更新，請把這個新連結傳給家人"
+        : "已建立私人邀請連結，請複製傳給家人");
     } else {
-      $("#invite-result").classList.add("hidden");
-      showToast("這個帳號已存在，現在登入即可看到這個家");
+      $("#invite-link").value = `${location.origin}${location.pathname}`;
+      $("#invite-result-title").textContent = result.already_member
+        ? "這個帳號本來就在這個家，權限沒有被更改"
+        : "帳號已加入這個家";
+      $("#invite-new-steps").classList.add("hidden");
+      $("#invite-expiry-note").classList.add("hidden");
+      $("#copy-invite-link").textContent = "複製登入網址";
+      $("#invite-result").classList.remove("hidden");
+      showToast(result.already_member
+        ? "沒有建立重複成員，也沒有更改原本權限"
+        : "請把登入網址傳給家人；忘記密碼可在登入頁重新設定");
     }
     await loadSettings();
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    const message = /逾時|無法連線|network|fetch/i.test(String(error?.message || ""))
+      ? "目前無法確認邀請是否完成；可以用同一個 Email 安全重試，不會建立重複成員。"
+      : error.message;
+    showToast(message, true);
+  }
   finally { setBusy(button, false); }
 });
 
 $("#copy-invite-link").addEventListener("click", async () => {
+  const copiedLabel = $("#copy-invite-link").textContent.includes("登入")
+    ? "登入網址已複製"
+    : "邀請連結已複製";
   try {
     await navigator.clipboard.writeText($("#invite-link").value);
-    showToast("邀請連結已複製");
+    showToast(copiedLabel);
   } catch (_) {
-    $("#invite-link").select(); document.execCommand("copy"); showToast("邀請連結已複製");
+    $("#invite-link").select(); document.execCommand("copy"); showToast(copiedLabel);
   }
 });
 
@@ -1479,8 +1538,11 @@ $("#members-list").addEventListener("click", async (event) => {
   if (!window.confirm(`確定把「${button.dataset.memberName}」移出這個家？對方自己的帳號與其他家不會被刪除。`)) return;
   setBusy(button, true);
   try {
-    await cloud.function("remove-member", { user_id: button.dataset.userId });
-    await loadSettings(); showToast("已移出這個家");
+    const result = await cloud.function("remove-member", { user_id: button.dataset.userId });
+    await loadSettings();
+    showToast(result.pending_account_deleted
+      ? "待接受的邀請已取消，舊連結已失效"
+      : "已移出這個家；對方帳號與其他家不受影響");
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -1607,5 +1669,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=40").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=52").then((registration) => registration.update()).catch(() => {});
 }

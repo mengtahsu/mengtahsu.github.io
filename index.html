@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=51">
+  <link rel="stylesheet" href="/styles.css?v=52">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -52,6 +52,7 @@
       <form id="password-reset-form" class="panel hidden">
         <p class="eyebrow">Email 已確認</p>
         <h2>設定 MyAmbi 密碼</h2>
+        <p id="password-account" class="password-account"></p>
         <p>設定完成後，回到主畫面版 MyAmbi，用 Email 和這組密碼登入一次。</p>
         <label>新密碼<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
         <label>再輸入一次<input name="password_confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
@@ -205,9 +206,14 @@
               <button class="primary" type="submit">新增成員</button>
             </form>
             <div id="invite-result" class="invite-result hidden">
-              <strong>把這個私人邀請連結傳給家人</strong>
-              <p>新成員開啟一次並設定密碼後，這台裝置會保持登入。</p>
-              <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製</button></div>
+              <strong id="invite-result-title">把這個私人邀請連結傳給家人</strong>
+              <ol id="invite-new-steps" class="invite-steps">
+                <li>請家人在 1 小時內開啟連結。</li>
+                <li>設定自己的 MyAmbi 密碼。</li>
+                <li>完成後會直接進入這個家；主畫面 App 也會保持登入。</li>
+              </ol>
+              <p id="invite-expiry-note" class="invite-expiry-note">如果連結過期，用同一個 Email 再按一次「新增成員」，就會取得新的連結。請以最後產生的連結為準。</p>
+              <div class="invite-link-row"><input id="invite-link" readonly><button id="copy-invite-link" class="secondary" type="button">複製邀請連結</button></div>
             </div>
             <div id="members-list" class="members-list"></div>
           </section>
@@ -247,8 +253,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=51"></script>
-  <script src="/cloud-client.js?v=51"></script>
-  <script src="/app.js?v=51" defer></script>
+  <script src="/config.js?v=52"></script>
+  <script src="/cloud-client.js?v=52"></script>
+  <script src="/app.js?v=52" defer></script>
 </body>
 </html>
