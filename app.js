@@ -196,6 +196,10 @@ function isAdmin() {
   return ["owner", "admin"].includes(state.status?.role);
 }
 
+function isOwner() {
+  return state.status?.role === "owner";
+}
+
 function sensiboModelLabel(model) {
   const labels = { air: "Sensibo Air", airq: "Sensibo Air Pro", sky: "Sensibo Sky" };
   return labels[String(model || "").toLowerCase()] || "Sensibo";
@@ -203,6 +207,7 @@ function sensiboModelLabel(model) {
 
 function applyRole() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !isAdmin()));
+  document.querySelectorAll(".owner-only").forEach((el) => el.classList.toggle("hidden", !isOwner()));
   document.querySelectorAll(".admin-copy").forEach((el) => el.classList.toggle("hidden", !isAdmin()));
   document.querySelectorAll(".member-copy").forEach((el) => el.classList.toggle("hidden", isAdmin()));
 }
@@ -1050,6 +1055,7 @@ async function loadSettings() {
   renderRoomManagement();
   renderSchedules();
   renderLocations();
+  renderDeleteHousehold();
   $("#members-list").replaceChildren(...state.users.map(memberRow));
   await loadInviteStatus().catch(() => {});
   try {
@@ -1420,6 +1426,23 @@ function renderLocations() {
   list.replaceChildren(form);
 }
 
+function renderDeleteHousehold() {
+  const panel = $("#delete-household-panel");
+  if (!panel || !state.household || !isOwner()) return;
+  const roomCount = state.allRooms.length;
+  const remoteCount = state.allRooms.reduce(
+    (total, room) => total + Number(room.remotes?.length || 0),
+    0,
+  );
+  const otherMemberCount = Math.max(0, state.users.length - 1);
+  $("#delete-household-name").textContent = state.household.name;
+  $("#delete-household-summary").textContent =
+    `目前包含 ${roomCount} 個房間、${remoteCount} 個遙控器及 ${otherMemberCount} 位其他成員。刪除後，這個家的歷史、學習資料、排程、邀請連結及成員關係都無法復原；所有人的帳號與其他家不受影響。`;
+  const form = $("#delete-household-form");
+  form.reset();
+  $("#delete-household-button").disabled = true;
+}
+
 $("#personal-room-choices").addEventListener("change", async () => {
   const roomIds = [...$("#personal-room-choices").querySelectorAll("input:checked")].map((item) => item.value);
   try {
@@ -1492,6 +1515,48 @@ $("#new-household-form").addEventListener("submit", async (event) => {
     showToast("新的家已建立");
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
+});
+
+$("#delete-household-form").addEventListener("input", (event) => {
+  const form = event.currentTarget;
+  const confirmation = String(new FormData(form).get("confirmation_name") || "").trim();
+  $("#delete-household-button").disabled = confirmation !== state.household?.name;
+});
+
+$("#delete-household-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!isOwner() || !state.household) return;
+  const form = event.currentTarget;
+  const button = event.submitter;
+  const householdId = state.household.id;
+  const householdName = state.household.name;
+  const confirmation = String(new FormData(form).get("confirmation_name") || "").trim();
+  if (confirmation !== householdName) {
+    showToast(`請完整輸入「${householdName}」`, true);
+    return;
+  }
+  if (!window.confirm(`最後確認：永久刪除「${householdName}」？\n\n房間、遙控器、歷史、學習資料、排程與成員關係都會刪除，而且無法復原。`)) return;
+  button.dataset.busyLabel = "正在刪除這個家…";
+  setBusy(button, true);
+  try {
+    await cloud.function("delete-household", { confirmation_name: confirmation });
+    cloud.clearHouseholdInvite(householdId);
+    clearInterval(state.refreshTimer);
+    const remainingHouseholds = state.households.filter((item) => item.id !== householdId);
+    cloud.setActiveHousehold(remainingHouseholds[0]?.id || null);
+    state.households = remainingHouseholds;
+    state.household = null;
+    state.rooms = [];
+    state.allRooms = [];
+    history.replaceState({}, document.title, location.pathname + (remainingHouseholds.length ? "#settings/household" : ""));
+    await boot();
+    showToast(remainingHouseholds.length
+      ? `已刪除「${householdName}」，現在切換到「${remainingHouseholds[0].name}」`
+      : `已刪除「${householdName}」；你可以建立新的家`);
+  } catch (error) {
+    showToast(error.message, true);
+    setBusy(button, false);
+  }
 });
 
 $("#household-switcher").addEventListener("change", async (event) => {
@@ -1962,5 +2027,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=59").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=60").then((registration) => registration.update()).catch(() => {});
 }

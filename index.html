@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=59">
+  <link rel="stylesheet" href="/styles.css?v=60">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -242,6 +242,18 @@
             <p class="source-note">地點資料 © OpenStreetMap contributors；室外天氣由 Open‑Meteo 提供。即使房間使用虛擬遙控器，室外溫濕度仍取自這個家的真實位置。</p>
           </section>
 
+          <section id="delete-household-panel" class="panel wide danger-zone owner-only hidden" data-settings-page="household" data-settings-order="3">
+            <span class="step danger-step">永久操作</span>
+            <h2>刪除這個家</h2>
+            <p id="delete-household-summary">刪除後，這個家的房間、遙控器、歷史與學習資料都無法復原。家庭成員的帳號以及他們的其他家不受影響。</p>
+            <form id="delete-household-form" class="delete-household-form">
+              <label>輸入家庭名稱「<strong id="delete-household-name"></strong>」確認
+                <input name="confirmation_name" maxlength="80" autocomplete="off" spellcheck="false" required>
+              </label>
+              <button id="delete-household-button" class="danger-button" type="submit" disabled>永久刪除這個家</button>
+            </form>
+          </section>
+
           <section class="panel wide admin-only" data-settings-page="members">
             <span class="step">邀請家人</span>
             <h2>家庭成員</h2>
@@ -298,8 +310,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=59"></script>
-  <script src="/cloud-client.js?v=59"></script>
-  <script src="/app.js?v=59" defer></script>
+  <script src="/config.js?v=60"></script>
+  <script src="/cloud-client.js?v=60"></script>
+  <script src="/app.js?v=60" defer></script>
 </body>
 </html>
