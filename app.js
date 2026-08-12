@@ -1964,7 +1964,7 @@ $("#save-key-button").addEventListener("click", async (event) => {
     const assigned = await cloud.function("sensibo-devices", {}, "GET");
     state.sensiboDevices = assigned.devices ?? [];
     $("#sensibo-key").value = ""; await loadRooms(); await loadSettings();
-    showToast(`連線成功，找到 ${result.devices.length} 台 Sensibo；請到房間內加入`);
+    showToast(`Sensibo 已儲存在你的 MyAmbi 帳號，找到 ${result.devices.length} 台遙控器；其他家庭不用再輸入 API Key`);
   } catch (error) { showToast(error.message, true); }
   finally { setBusy(button, false); }
 });
@@ -2052,5 +2052,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=61").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=62").then((registration) => registration.update()).catch(() => {});
 }

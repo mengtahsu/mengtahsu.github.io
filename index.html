@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=61">
+  <link rel="stylesheet" href="/styles.css?v=62">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -217,7 +217,7 @@
             <button id="demo-button" class="text-button" type="button">快速建立主臥、客廳、女兒房，並各加入虛擬遙控器</button>
             <details id="sensibo-tools" class="sensibo-inline-tools">
               <summary>連接真實 Sensibo 遙控器</summary>
-              <p>只需為這個家連接一次 Sensibo 帳號；讀取後，每個房間都能從自己的區塊選擇要加入的真實遙控器。</p>
+              <p>每個 MyAmbi 帳號只需連接一次 Sensibo；之後你建立的所有家庭都會自動使用同一個帳號，不必重貼 API Key。每個房間可從自己的區塊選擇或移入真實遙控器。</p>
               <label>API Key<input id="sensibo-key" type="password" autocomplete="off" placeholder="會加密存進 Supabase Vault"></label>
               <div class="button-row">
                 <button id="save-key-button" class="secondary">連接並讀取 Sensibo</button>
@@ -310,8 +310,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=61"></script>
-  <script src="/cloud-client.js?v=61"></script>
-  <script src="/app.js?v=61" defer></script>
+  <script src="/config.js?v=62"></script>
+  <script src="/cloud-client.js?v=62"></script>
+  <script src="/app.js?v=62" defer></script>
 </body>
 </html>
