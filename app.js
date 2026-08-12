@@ -1380,7 +1380,15 @@ function renderRoomManagement() {
       select.setAttribute("aria-label", `${room.name} 的 Sensibo 遙控器`);
       for (const device of state.sensiboDevices) {
         const option = document.createElement("option"); option.value = device.deviceId;
-        option.textContent = `${device.name} · ${sensiboModelLabel(device.productModel)}`; select.append(option);
+        const assignment = device.assignment;
+        const location = assignment
+          ? assignment.roomId === room.id
+            ? " · 已在此房間"
+            : ` · 目前在 ${assignment.householdName}／${assignment.roomName}${assignment.canMove ? "（加入會移動）" : "（無權移動）"}`
+          : "";
+        option.textContent = `${device.name} · ${sensiboModelLabel(device.productModel)}${location}`;
+        option.disabled = Boolean(assignment && !assignment.canMove);
+        select.append(option);
       }
       const add = document.createElement("button"); add.type = "button";
       add.className = "secondary add-sensibo-remote"; add.dataset.roomId = room.id;
@@ -1776,10 +1784,26 @@ $("#room-management-list").addEventListener("click", async (event) => {
   }
   if (button.classList.contains("add-sensibo-remote")) {
     const deviceId = button.parentElement.querySelector(".sensibo-device-select")?.value;
+    const device = state.sensiboDevices.find((item) => item.deviceId === deviceId);
+    const assignment = device?.assignment;
+    const moving = Boolean(assignment && assignment.roomId !== button.dataset.roomId);
+    if (moving && !assignment.canMove) {
+      return showToast("這台 Sensibo 已在另一個家庭；只有原家庭管理者可以移動", true);
+    }
+    if (moving && !window.confirm(
+      `「${device.name}」目前在「${assignment.householdName}／${assignment.roomName}」。\n\n確定把實體遙控器移到目前家庭的這個房間？原房間的歷史與學習資料會保留，但不會再由這台遙控器控制。`,
+    )) return;
     setBusy(button, true);
     try {
-      await cloud.function("add-sensibo-remote", { room_id: button.dataset.roomId, device_id: deviceId });
-      await loadSettings(); await loadRooms(); showToast("已把 Sensibo 加入房間");
+      const result = await cloud.function("add-sensibo-remote", {
+        room_id: button.dataset.roomId,
+        device_id: deviceId,
+        transfer_existing: moving,
+      });
+      await loadSettings(); await loadRooms();
+      showToast(result.moved
+        ? `已把 Sensibo 從「${result.previous_household_name}／${result.previous_room_name}」移到目前房間；原歷史完整保留`
+        : "已把 Sensibo 加入房間");
     } catch (error) { showToast(error.message, true); }
     finally { setBusy(button, false); }
     return;
@@ -1937,7 +1961,8 @@ $("#save-key-button").addEventListener("click", async (event) => {
   setBusy(button, true);
   try {
     const result = await cloud.function("connect-sensibo", { api_key: $("#sensibo-key").value });
-    state.sensiboDevices = result.devices ?? [];
+    const assigned = await cloud.function("sensibo-devices", {}, "GET");
+    state.sensiboDevices = assigned.devices ?? [];
     $("#sensibo-key").value = ""; await loadRooms(); await loadSettings();
     showToast(`連線成功，找到 ${result.devices.length} 台 Sensibo；請到房間內加入`);
   } catch (error) { showToast(error.message, true); }
@@ -2027,5 +2052,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=60").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=61").then((registration) => registration.update()).catch(() => {});
 }

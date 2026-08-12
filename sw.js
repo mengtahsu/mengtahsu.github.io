@@ -1,5 +1,5 @@
-const CACHE = "myambi-shell-v60";
-const SHELL = ["/", "/?v=60", "/styles.css?v=60", "/logo.svg", "/manifest.json", "/cloud-client.js?v=60", "/app.js?v=60"];
+const CACHE = "myambi-shell-v61";
+const SHELL = ["/", "/?v=61", "/styles.css?v=61", "/logo.svg", "/manifest.json", "/cloud-client.js?v=61", "/app.js?v=61"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
