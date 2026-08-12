@@ -332,6 +332,23 @@ function numericValue(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function temperatureAxis(values, intervalCount = 4) {
+  const paddedMin = Math.floor(Math.min(...values) - 1);
+  const paddedMax = Math.ceil(Math.max(...values) + 1);
+  const intervals = Math.max(1, Math.round(intervalCount));
+  // Keep every displayed temperature tick exact. The old chart divided an
+  // arbitrary range into four fractional values and rounded only the labels,
+  // so a line labelled 26° could physically represent 25.75°.
+  const step = Math.max(1, Math.ceil((paddedMax - paddedMin) / intervals));
+  const min = paddedMin;
+  const max = min + step * intervals;
+  const ticks = Array.from(
+    { length: intervals + 1 },
+    (_, index) => max - step * index,
+  );
+  return { min, max, ticks };
+}
+
 function currentSettingPresentation(room, modeLabels) {
   if (!room.is_on) {
     return {
@@ -777,9 +794,9 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
     section.append(empty);
     return section;
   }
-  let temperatureMin = Math.floor(Math.min(...temperatureValues) - 1);
-  let temperatureMax = Math.ceil(Math.max(...temperatureValues) + 1);
-  if (temperatureMax === temperatureMin) temperatureMax += 1;
+  const temperatureScale = temperatureAxis(temperatureValues);
+  const temperatureMin = temperatureScale.min;
+  const temperatureMax = temperatureScale.max;
   const x = (at) => margin.left + (at - start) / timeSpan * plotWidth;
   const yTemperature = (value) => margin.top + (temperatureMax - value) / (temperatureMax - temperatureMin) * plotHeight;
   const yHumidity = (value) => margin.top + (100 - value) / 100 * plotHeight;
@@ -801,13 +818,15 @@ function climateChart(rawReadings, days = 1, zoom = 1) {
   };
   const leftAxisLabels = [];
   const rightAxisLabels = [];
-  for (let index = 0; index <= 4; index += 1) {
-    const y = margin.top + plotHeight * index / 4;
-    const temp = temperatureMax - (temperatureMax - temperatureMin) * index / 4;
+  temperatureScale.ticks.forEach((temp, index) => {
+    const y = yTemperature(temp);
     line(margin.left, y, margin.left + plotWidth, y, "chart-gridline");
-    leftAxisLabels.push({ text: `${temp.toFixed(0)}°`, y });
-    rightAxisLabels.push({ text: `${100 - index * 25}%`, y });
-  }
+    leftAxisLabels.push({ text: `${temp}°`, y });
+    rightAxisLabels.push({
+      text: `${Math.round(100 - index * 100 / (temperatureScale.ticks.length - 1))}%`,
+      y,
+    });
+  });
   addChartTimeAxis({
     svg, line, label, x, start, end, days,
     plotTop: margin.top, plotBottom: margin.top + plotHeight, labelY: 294,
@@ -2052,5 +2071,5 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     reloadingForUpdate = true;
     location.reload();
   });
-  navigator.serviceWorker.register("/sw.js?v=62").then((registration) => registration.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=63").then((registration) => registration.update()).catch(() => {});
 }
