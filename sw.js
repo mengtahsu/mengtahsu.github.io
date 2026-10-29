@@ -1,5 +1,5 @@
-const CACHE = "myambi-shell-v63";
-const SHELL = ["/", "/?v=63", "/styles.css?v=63", "/logo.svg", "/manifest.json", "/cloud-client.js?v=63", "/app.js?v=63"];
+const CACHE = "myambi-shell-v65";
+const SHELL = ["/", "/?v=64", "/styles.css?v=64", "/logo.svg", "/manifest.json", "/cloud-client.js?v=64", "/app.js?v=64"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -14,8 +14,13 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET" || new URL(event.request.url).origin !== location.origin) return;
-  if (new URL(event.request.url).pathname === "/config.js") {
+  const url = new URL(event.request.url);
+  if (event.request.method !== "GET" || url.origin !== location.origin) return;
+  if (url.pathname.endsWith(".mp4")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  if (url.pathname === "/config.js") {
     event.respondWith(fetch(event.request));
     return;
   }

@@ -1148,7 +1148,7 @@ function renderLearning() {
   const seasons = { spring: "春季", summer: "夏季", autumn: "秋季", winter: "冬季" };
   if (state.learningContext?.current_date) {
     $("#learning-context").textContent =
-      `現在是 ${state.learningContext.current_date} · ${seasons[state.learningContext.current_season] || "季節未定"}。MyAmbi 會優先參考相近時段與相近季節的紀錄。`;
+      `現在是 ${state.learningContext.current_date} · ${seasons[state.learningContext.current_season] || "季節未定"}。MyAmbi 會優先參考相近時段與相近季節的紀錄；冷氣、送風、暖氣各自訓練，不互相混用。`;
   }
   const confidence = { low: "資料不足", medium: "開始穩定", high: "可信度高" };
   const rows = [];
@@ -1162,40 +1162,55 @@ function renderLearning() {
     const coolingGap = numericValue(thermal.cooling_rate_per_degree_gap);
     const outdoorLeak = numericValue(thermal.outdoor_leak_rate_per_degree);
     thermalRow.innerHTML = `
-      <div><strong></strong><span>房間熱力模型 · 分開學習冷氣運轉降溫、關機回溫、設定溫差與室外熱滲入</span><span>${coolingGap === null ? "設定溫差係數蒐集中" : `每 1° 室溫／設定差帶來 ${coolingGap.toFixed(2)}°/時降溫`} · ${outdoorLeak === null ? "室外熱滲入係數蒐集中" : `每 1° 室外／室內差帶來 ${outdoorLeak.toFixed(2)}°/時回溫`}</span></div>
+      <div><strong></strong><span>房間熱力模型 · 分開學習冷氣運轉降溫、暖氣運轉升溫、關機回溫與室外熱滲入</span><span>${coolingGap === null ? "設定溫差係數蒐集中" : `每 1° 室溫／設定差帶來 ${coolingGap.toFixed(2)}°/時降溫`} · ${passiveWarming === null ? "關機回溫蒐集中" : `關機自然回溫 ${passiveWarming.toFixed(2)}°/時`} · ${outdoorLeak === null ? "室外熱滲入係數蒐集中" : `每 1° 室外／室內差帶來 ${outdoorLeak.toFixed(2)}°/時回溫`}</span></div>
       <div class="learned-temperature"><small>降溫速度</small>${cooling === null ? "蒐集中" : `${cooling.toFixed(2)}°/時`}</div>
-      <div class="learned-temperature"><small>關機回溫</small>${passiveWarming === null ? (warming === null ? "蒐集中" : `${warming.toFixed(2)}°/時`) : `${passiveWarming.toFixed(2)}°/時`}</div>
-      <div class="confidence ${cooling !== null && (passiveWarming !== null || warming !== null) ? "high" : cooling !== null || warming !== null ? "medium" : ""}">降溫 ${Number(thermal.cooling_samples || 0)} 段 · 全部升溫 ${Number(thermal.warming_samples || 0)} 段 · 關機 ${Number(thermal.passive_warming_samples || 0)} 段</div>`;
+      <div class="learned-temperature"><small>暖氣升溫</small>${warming === null ? "蒐集中" : `${warming.toFixed(2)}°/時`}</div>
+      <div class="confidence ${cooling !== null && warming !== null ? "high" : cooling !== null || warming !== null ? "medium" : ""}">冷氣 ${Number(thermal.cooling_samples || 0)} 段 · 暖氣 ${Number(thermal.warming_samples || 0)} 段 · 關機 ${Number(thermal.passive_warming_samples || 0)} 段</div>`;
     thermalRow.querySelector("strong").textContent = room.name;
     rows.push(thermalRow);
-    const useful = room.buckets.filter((bucket) => bucket.samples > 0);
-    if (!useful.length) {
-      const empty = document.createElement("div");
-      empty.className = "learning-room";
-      empty.innerHTML = `<div><strong></strong><span>還沒有回報；使用房間卡片的有點冷、剛好、有點熱即可開始學習。</span></div>`;
-      empty.querySelector("strong").textContent = room.name;
-      rows.push(empty);
-      continue;
-    }
-    for (const [bucketIndex, bucket] of useful.entries()) {
-      const row = document.createElement("div");
-      row.className = "learning-room";
-      const direction = bucket.cold > bucket.hot
-        ? `較常覺得冷（${bucket.cold} 次）`
-        : bucket.hot > bucket.cold
-        ? `較常覺得熱（${bucket.hot} 次）`
-        : `冷熱回報平衡`;
-      const coldTiming = bucketIndex === 0 && room.usual_cold_times?.length
-        ? ` · 常見覺冷時間 ${room.usual_cold_times.join("、")}`
-        : "";
-      row.innerHTML = `
-        <div><strong></strong><span>${bucket.label} · ${direction}${coldTiming} · 濕度體感修正 ${Number(bucket.humidity_correction) >= 0 ? "+" : ""}${Number(bucket.humidity_correction || 0).toFixed(1)}°</span></div>
-        <div class="learned-temperature"><small>舒適室溫</small>${bucket.comfort_room_temperature == null ? "—" : `${Number(bucket.comfort_room_temperature).toFixed(1)}°`}</div>
-        <div class="learned-temperature"><small>建議冷氣</small>${Number(bucket.recommended_setpoint).toFixed(1)}°</div>
-        <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
-      `;
-      row.querySelector("strong").textContent = room.name;
-      rows.push(row);
+    const modes = room.modes ?? [{
+      key: "cool",
+      label: "冷氣模式",
+      samples: Number(room.samples || 0),
+      usual_cold_times: room.usual_cold_times ?? [],
+      buckets: room.buckets ?? [],
+    }];
+    for (const mode of modes) {
+      const useful = (mode.buckets ?? []).filter((bucket) => bucket.samples > 0);
+      if (!useful.length) {
+        const empty = document.createElement("div");
+        empty.className = "learning-room mode-learning-empty";
+        empty.innerHTML = `<div><strong></strong><span>${mode.label}尚無回報；第一次使用此模式的冷熱回報後，會建立獨立曲線。</span></div><div class="confidence">0 筆</div>`;
+        empty.querySelector("strong").textContent = room.name;
+        rows.push(empty);
+        continue;
+      }
+      for (const [bucketIndex, bucket] of useful.entries()) {
+        const row = document.createElement("div");
+        row.className = `learning-room mode-${mode.key}`;
+        const direction = bucket.cold > bucket.hot
+          ? `較常覺得冷（${bucket.cold} 次）`
+          : bucket.hot > bucket.cold
+          ? `較常覺得熱（${bucket.hot} 次）`
+          : `冷熱回報平衡`;
+        const coldTiming = bucketIndex === 0 && mode.usual_cold_times?.length
+          ? ` · 常見覺冷時間 ${mode.usual_cold_times.join("、")}`
+          : "";
+        const setpointLabel = mode.key === "heat" ? "建議暖氣" : mode.key === "fan" ? "模式設定" : "建議冷氣";
+        const setpointValue = mode.key === "fan"
+          ? "送風無溫度"
+          : bucket.recommended_setpoint == null
+          ? "蒐集中"
+          : `${Number(bucket.recommended_setpoint).toFixed(1)}°`;
+        row.innerHTML = `
+          <div><strong></strong><span>${mode.label} · ${bucket.label} · ${direction}${coldTiming} · 濕度體感修正 ${Number(bucket.humidity_correction) >= 0 ? "+" : ""}${Number(bucket.humidity_correction || 0).toFixed(1)}°</span></div>
+          <div class="learned-temperature"><small>舒適室溫</small>${bucket.comfort_room_temperature == null ? "—" : `${Number(bucket.comfort_room_temperature).toFixed(1)}°`}</div>
+          <div class="learned-temperature"><small>${setpointLabel}</small>${setpointValue}</div>
+          <div class="confidence ${bucket.confidence}">${confidence[bucket.confidence]} · ${bucket.samples} 筆</div>
+        `;
+        row.querySelector("strong").textContent = room.name;
+        rows.push(row);
+      }
     }
   }
   list.replaceChildren(...rows);
