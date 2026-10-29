@@ -352,8 +352,7 @@ function temperatureAxis(values, intervalCount = 4) {
 function currentSettingPresentation(room, modeLabels) {
   if (!room.is_on) {
     return {
-      title: "目前設定：已關機",
-      detail: "關機安全鎖已啟用，不會傳送溫度或風量",
+      title: "已關機",
       modeClass: "off",
     };
   }
@@ -362,21 +361,18 @@ function currentSettingPresentation(room, modeLabels) {
   const modeLabel = modeLabels[mode] || "未知模式";
   if (mode === "fan") {
     return {
-      title: "目前設定：送風模式",
-      detail: "不使用溫度設定；回報熱會切換冷氣，回報冷會切換暖氣",
+      title: "送風模式",
       modeClass: "fan",
     };
   }
   if (mode === "cool" || mode === "heat") {
     return {
-      title: `目前設定：${modeLabel}模式 ${displayNumber(room.target_temperature)}°`,
-      detail: "MyAmbi 依室溫與你的感覺自動調整",
+      title: `${modeLabel} ${displayNumber(room.target_temperature)}°`,
       modeClass: mode,
     };
   }
   return {
-    title: `目前設定：${modeLabel}`,
-    detail: "MyAmbi 依室溫與你的感覺自動調整",
+    title: modeLabel,
     modeClass: Object.hasOwn(modeLabels, mode) ? mode : "unknown",
   };
 }
@@ -408,13 +404,6 @@ function roomCard(room) {
   const hasRemote = Boolean(room.primary_remote_id && room.remote_provider);
   const isOn = Boolean(room.is_on);
   const canFeedback = hasRemote && isOn;
-  const tvoc = numericValue(room.tvoc);
-  const co2 = numericValue(room.co2);
-  const airQuality = tvoc === null && co2 === null ? "" : `
-    <div class="air-quality-row" aria-label="Sensibo Air Pro 空氣品質">
-      ${tvoc === null ? "" : `<span><small>TVOC</small><b>${displayNumber(tvoc)} ppb</b></span>`}
-      ${co2 === null ? "" : `<span><small>eCO₂（估算）</small><b>${displayNumber(co2)} ppm</b></span>`}
-    </div>`;
   const overrideTime = room.override_ends_at
     ? new Date(room.override_ends_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -432,14 +421,12 @@ function roomCard(room) {
   const presenceNames = roomPresence.map((presence) => presence.display_name).join("、");
   article.innerHTML = `
     <div class="room-head"><h2></h2><div class="room-head-controls"><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span><button class="power-toggle ${isOn ? "on" : "off"}" ${hasRemote ? "" : "disabled"} aria-label="${isOn ? "關閉" : "開啟"}${room.name}冷氣"><span aria-hidden="true">⏻</span>${isOn ? "關機" : "開機"}</button></div></div>
-    <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
-    <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}<span>模式：${modeLabels[room.mode] || room.mode || "—"}</span></div>
-    ${airQuality}
-    <div class="target-row mode-${currentSetting.modeClass}">
-      <strong class="current-setting">${currentSetting.title}</strong>
-      <small>${currentSetting.detail}</small>
+    <div class="room-climate-row">
+      <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
+      <div class="target-row mode-${currentSetting.modeClass}"><small>目前設定</small><strong class="current-setting">${currentSetting.title}</strong></div>
     </div>
-    <p class="feeling-label${canFeedback ? "" : " unavailable"}">${!hasRemote ? "請先新增遙控器，才能回報冷熱" : isOn ? "你現在需要什麼？" : "冷氣已關閉；開機後才能回報冷熱"}</p>
+    <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}</div>
+    ${!canFeedback ? `<p class="feeling-label unavailable">${!hasRemote ? "請先新增遙控器，才能回報冷熱" : "冷氣已關閉；開機後才能回報冷熱"}</p>` : ""}
     <div class="feelings${canFeedback ? "" : " unavailable"}">
       <button class="comfort-action feeling cold" data-feeling="-2" ${canFeedback ? "" : "disabled"}><span>🥶</span>太冷</button>
       <button class="comfort-action feeling hot" data-feeling="2" ${canFeedback ? "" : "disabled"}><span>🥵</span>太熱</button>

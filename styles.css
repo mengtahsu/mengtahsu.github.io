@@ -84,15 +84,16 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .power-toggle.on { background: #fff0eb; color: #9b4635; }
 .power-toggle.off { background: var(--green-soft); color: var(--green); }
 .power-toggle:disabled { opacity: .45; }
-.temperature { font-size: 4.5rem; letter-spacing: -.08em; line-height: 1; font-weight: 300; margin: 24px 0 6px; }
+.room-climate-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin: 20px 0 3px; }
+.temperature { font-size: 4.5rem; letter-spacing: -.08em; line-height: 1; font-weight: 300; margin: 0; }
 .temperature sup { font-size: 1.25rem; vertical-align: top; position: relative; top: .55rem; letter-spacing: 0; }
 .climate-meta { display: flex; gap: 16px; color: var(--muted); font-size: .84rem; }
-.target-row { display: grid; justify-items: center; gap: 4px; margin: 25px 0 18px; padding: 12px 13px; border-radius: 16px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
+.target-row { display: grid; justify-items: start; align-content: center; gap: 2px; margin: 0 0 4px; padding: 9px 12px; border-radius: 14px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
 .target-row.mode-fan { background: rgba(47,111,155,.08); border-color: rgba(47,111,155,.22); }
 .target-row.mode-heat { background: rgba(155,62,43,.08); border-color: rgba(155,62,43,.2); }
 .target-row.mode-off { background: rgba(119,115,108,.08); }
-.current-setting { font-size: 1.02rem; font-weight: 900; text-align: center; }
-.target-row small { color: var(--muted); font-size: .68rem; text-align: center; }
+.current-setting { font-size: 1.02rem; font-weight: 900; text-align: left; }
+.target-row small { color: var(--muted); font-size: .68rem; text-align: left; }
 .target-value { font-weight: 900; min-width: 54px; text-align: center; }
 .feeling-label { color: var(--muted); font-size: .95rem; font-weight: 750; margin: auto 0 10px; }
 .feelings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -379,15 +380,14 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .room-head-controls { gap: 5px; }
   .room-state { padding: 5px 7px; font-size: .64rem; }
   .power-toggle { min-height: 44px; padding: 7px 9px; }
-  .temperature { margin: 7px 0 2px; font-size: 3.35rem; }
+  .room-climate-row { gap: 7px; margin: 8px 0 2px; }
+  .temperature { font-size: 3.35rem; }
   .temperature sup { top: .35rem; font-size: 1rem; }
   .climate-meta { gap: 10px; font-size: .72rem; }
-  .air-quality-row { gap: 6px; margin: 7px 0 1px; }
-  .air-quality-row span { padding: 6px 8px; }
-  .air-quality-row b { font-size: .82rem; }
-  .target-row { margin: 8px 0 7px; padding: 7px 9px; border-radius: 12px; }
-  .target-row small { font-size: .62rem; }
-  .feeling-label { margin: 0 0 6px; font-size: .78rem; }
+  .target-row { margin: 0 0 3px; padding: 6px 9px; border-radius: 12px; }
+  .current-setting { font-size: .9rem; }
+  .target-row small { font-size: .58rem; }
+  .feeling-label { margin: 0 0 4px; font-size: .78rem; }
   .feelings { gap: 7px; }
   .comfort-action { min-height: 55px; padding: 6px 4px; border-radius: 12px; font-size: .9rem; }
   .comfort-action span { display: inline; margin: 0 4px 0 0; font-size: 1.15rem; }
