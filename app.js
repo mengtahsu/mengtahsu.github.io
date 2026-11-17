@@ -377,6 +377,16 @@ function currentSettingPresentation(room, modeLabels) {
   };
 }
 
+function comfortTargetPresentation(room) {
+  const hasRemote = Boolean(room.primary_remote_id && room.remote_provider);
+  const target = numericValue(room.comfort_target_temperature);
+  const active = Boolean(room.is_on && room.automation_enabled);
+  return {
+    label: active ? "目標室溫" : "上次目標室溫",
+    value: !hasRemote ? "—" : target === null ? "尚無資料" : `${displayNumber(target, 1)}°C`,
+  };
+}
+
 function renderRooms() {
   $("#greeting").textContent = `${greeting()}，${displayName()}`;
   const onlineRooms = state.rooms.filter((room) => room.observed_at).length;
@@ -409,6 +419,7 @@ function roomCard(room) {
     : null;
   const modeLabels = { cool: "冷氣", heat: "暖氣", fan: "送風", dry: "除濕", auto: "自動" };
   const currentSetting = currentSettingPresentation(room, modeLabels);
+  const comfortTarget = comfortTargetPresentation(room);
   const schedule = room.schedule_enabled
     ? `${String(room.scheduled_on).slice(0, 5)} 開 · ${String(room.scheduled_off).slice(0, 5)} 關 · 夜間最多 ${Number(room.night_change_limit ?? 8)} 次`
     : null;
@@ -423,7 +434,7 @@ function roomCard(room) {
     <div class="room-head"><h2></h2><div class="room-head-controls"><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span><button class="power-toggle ${isOn ? "on" : "off"}" ${hasRemote ? "" : "disabled"} aria-label="${isOn ? "關閉" : "開啟"}${room.name}冷氣"><span aria-hidden="true">⏻</span>${isOn ? "關機" : "開機"}</button></div></div>
     <div class="room-climate-row">
       <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
-      <div class="target-row mode-${currentSetting.modeClass}"><small>目前設定</small><strong class="current-setting">${currentSetting.title}</strong></div>
+      <div class="target-row mode-${currentSetting.modeClass}"><small>目前設定</small><strong class="current-setting">${currentSetting.title}</strong><div class="comfort-target-line"><span>${comfortTarget.label}</span><strong>${comfortTarget.value}</strong></div></div>
     </div>
     <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}</div>
     ${!canFeedback ? `<p class="feeling-label unavailable">${!hasRemote ? "請先新增遙控器，才能回報冷熱" : "冷氣已關閉；開機後才能回報冷熱"}</p>` : ""}
