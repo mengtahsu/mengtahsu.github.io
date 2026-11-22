@@ -88,15 +88,16 @@ input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(39,104,79,.
 .temperature { font-size: 4.5rem; letter-spacing: -.08em; line-height: 1; font-weight: 300; margin: 0; }
 .temperature sup { font-size: 1.25rem; vertical-align: top; position: relative; top: .55rem; letter-spacing: 0; }
 .climate-meta { display: flex; gap: 16px; color: var(--muted); font-size: .84rem; }
-.target-row { display: grid; justify-items: start; align-content: center; gap: 2px; margin: 0 0 4px; padding: 9px 12px; border-radius: 14px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
-.target-row.mode-fan { background: rgba(47,111,155,.08); border-color: rgba(47,111,155,.22); }
-.target-row.mode-heat { background: rgba(155,62,43,.08); border-color: rgba(155,62,43,.2); }
-.target-row.mode-off { background: rgba(119,115,108,.08); }
+.target-row { display: grid; justify-items: start; align-content: center; gap: 2px; margin: 0 0 4px; padding: 0; background: none; border: 0; border-radius: 0; }
+.target-row.mode-fan .current-setting { color: var(--blue); }
+.target-row.mode-heat .current-setting { color: #9b3e2b; }
+.target-row.mode-off .current-setting { color: var(--muted); }
 .current-setting { font-size: 1.02rem; font-weight: 900; text-align: left; }
 .target-row small { color: var(--muted); font-size: .68rem; text-align: left; }
 .comfort-target-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 7px; color: var(--green); font-size: .82rem; line-height: 1.4; }
 .comfort-target-line strong { font-size: .98rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.edit-goal { min-height:44px; padding:5px 12px; border:1px solid var(--line); border-radius:12px; background:var(--green-soft); color:var(--green); font-size:1rem; font-weight:700; }
+.edit-goal { min-height:44px; padding:5px 8px; border:0; border-radius:0; background:none; color:var(--green); font-size:1rem; font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+.edit-goal:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
 #target-dialog { width:min(440px, calc(100% - 24px)); padding:24px; }
 #target-dialog h2 { font-size:1.5rem; }
 #target-dialog label { font-size:1.05rem; }
@@ -393,7 +394,7 @@ dialog::backdrop { background: rgba(18,28,23,.35); backdrop-filter: blur(5px); }
   .temperature { font-size: 3.35rem; }
   .temperature sup { top: .35rem; font-size: 1rem; }
   .climate-meta { gap: 10px; font-size: .72rem; }
-  .target-row { margin: 0 0 3px; padding: 6px 9px; border-radius: 12px; }
+  .target-row { margin: 0 0 3px; padding: 0; }
   .current-setting { font-size: .9rem; }
   .target-row small { font-size: .58rem; }
   .comfort-target-line { font-size: .74rem; gap: 2px 5px; }
