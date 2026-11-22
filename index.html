@@ -10,7 +10,7 @@
   <title>MyAmbi</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css?v=67">
+  <link rel="stylesheet" href="/styles.css?v=68">
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -309,9 +309,24 @@
     <div id="history-content" class="history-content"></div>
   </dialog>
 
+  <dialog id="target-dialog" aria-labelledby="target-dialog-title">
+    <form id="target-form">
+      <div class="dialog-head"><h2 id="target-dialog-title">目標室溫</h2><button type="button" class="icon-button" id="close-target" aria-label="關閉">×</button></div>
+      <p id="target-room-label"></p>
+      <label for="room-goal-input">你希望房間維持幾度？</label>
+      <div class="goal-stepper">
+        <button type="button" data-goal-step="-0.1" aria-label="降低目標室溫 0.1 度">−</button>
+        <div><input id="room-goal-input" type="number" inputmode="decimal" min="20" max="32" step="0.1" required><span>°C</span></div>
+        <button type="button" data-goal-step="0.1" aria-label="提高目標室溫 0.1 度">＋</button>
+      </div>
+      <p class="goal-note">這是房間的目標室溫，不是冷氣設定。套用於目前模式，直到下次回報冷熱或更改目標；關機時不會因此開機。</p>
+      <p id="target-error" role="alert"></p>
+      <button id="save-target" type="submit" class="primary">套用目標</button>
+    </form>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/config.js?v=67"></script>
-  <script src="/cloud-client.js?v=67"></script>
-  <script src="/app.js?v=67" defer></script>
+  <script src="/config.js?v=68"></script>
+  <script src="/cloud-client.js?v=68"></script>
+  <script src="/app.js?v=68" defer></script>
 </body>
 </html>

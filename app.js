@@ -387,6 +387,48 @@ function comfortTargetPresentation(room) {
   };
 }
 
+let goalEditorRoom = null;
+let goalSaving = false;
+function openGoalEditor(room) {
+  goalEditorRoom = { id: room.id, mode: room.mode };
+  $("#target-room-label").textContent = room.name + " · " + ({cool:"冷氣",fan:"送風",heat:"暖氣"}[room.mode] || "目前模式");
+  $("#room-goal-input").value = (numericValue(room.comfort_target_temperature) ?? numericValue(room.temperature) ?? 27).toFixed(1);
+  $("#target-error").textContent = "";
+  $("#target-dialog").showModal();
+}
+$("#close-target").addEventListener("click", () => { if (!goalSaving) $("#target-dialog").close(); });
+$("#target-dialog").addEventListener("cancel", event => { if (goalSaving) event.preventDefault(); });
+$("#target-dialog").addEventListener("click", event => {
+  const step = event.target.closest("[data-goal-step]");
+  if (!step || goalSaving) return;
+  const input = $("#room-goal-input");
+  const value = input.valueAsNumber;
+  if (Number.isFinite(value)) input.value = Math.max(20, Math.min(32, Math.round((value + Number(step.dataset.goalStep))*10)/10)).toFixed(1);
+});
+$("#target-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (goalSaving || !goalEditorRoom || !event.target.reportValidity()) return;
+  goalSaving = true;
+  const submit = $("#save-target");
+  setBusy(submit, true);
+  $("#close-target").disabled = true;
+  $("#room-goal-input").disabled = true;
+  try {
+    const result = await cloud.function("comfort-target", {room_id:goalEditorRoom.id, expected_mode:goalEditorRoom.mode,
+      target_temperature:Number($("#room-goal-input").value)});
+    $("#target-dialog").close();
+    showToast(result.message);
+    await loadRooms();
+  } catch (error) {
+    $("#target-error").textContent = error.message || "暫時無法設定，請稍後再試";
+  } finally {
+    goalSaving = false;
+    setBusy(submit, false);
+    $("#close-target").disabled = false;
+    $("#room-goal-input").disabled = false;
+  }
+});
+
 function renderRooms() {
   $("#greeting").textContent = `${greeting()}，${displayName()}`;
   const onlineRooms = state.rooms.filter((room) => room.observed_at).length;
@@ -434,7 +476,7 @@ function roomCard(room) {
     <div class="room-head"><h2></h2><div class="room-head-controls"><span class="room-state ${isOn ? "" : "off"}">${room.observed_at ? (isOn ? "運轉中" : "已關閉") : "等待同步"}</span><button class="power-toggle ${isOn ? "on" : "off"}" ${hasRemote ? "" : "disabled"} aria-label="${isOn ? "關閉" : "開啟"}${room.name}冷氣"><span aria-hidden="true">⏻</span>${isOn ? "關機" : "開機"}</button></div></div>
     <div class="room-climate-row">
       <div class="temperature">${displayNumber(room.temperature, 1)}<sup>°</sup></div>
-      <div class="target-row mode-${currentSetting.modeClass}"><small>目前設定</small><strong class="current-setting">${currentSetting.title}</strong><div class="comfort-target-line"><span>${comfortTarget.label}</span><strong>${comfortTarget.value}</strong></div></div>
+      <div class="target-row mode-${currentSetting.modeClass}"><small>目前設定</small><strong class="current-setting">${currentSetting.title}</strong><div class="comfort-target-line"><span>${comfortTarget.label}</span><strong>${comfortTarget.value}</strong><button class="edit-goal" ${hasRemote ? "" : "disabled"} aria-label="設定目標室溫">設定</button></div></div>
     </div>
     <div class="climate-meta"><span>濕度 ${displayNumber(room.humidity)}%</span>${numericValue(room.outdoor_temperature) !== null ? `<span>室外 ${displayNumber(room.outdoor_temperature, 1)}°</span>` : ""}</div>
     ${!canFeedback ? `<p class="feeling-label unavailable">${!hasRemote ? "請先新增遙控器，才能回報冷熱" : "冷氣已關閉；開機後才能回報冷熱"}</p>` : ""}
@@ -472,7 +514,9 @@ roomGrid.addEventListener("click", async (event) => {
   const room = state.rooms.find((item) => item.id === roomId);
   try {
     setBusy(button, true);
-    if (button.matches(".power-toggle")) {
+    if (button.matches(".edit-goal")) {
+      openGoalEditor(room);
+    } else if (button.matches(".power-toggle")) {
       const result = await cloud.function("power", { room_id: roomId, on: !room.is_on });
       showToast(result.decision?.dropped
         ? result.decision?.source === "queue_unhealthy"
@@ -520,7 +564,7 @@ roomGrid.addEventListener("click", async (event) => {
 async function showHistory(room, days = 1) {
   const roomFilter = encodeURIComponent(`eq.${room.id}`);
   const [feedback, decisions, climate] = await Promise.all([
-    cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
+    cloud.rest("comfort_feedback", `select=id,user_id,recorded_at,local_date,season,feeling,snapshot,inferred_desired_room_temperature&room_id=${roomFilter}&order=recorded_at.desc&limit=50`),
     cloud.rest("control_decisions", `select=id,decided_at,previous_temperature,desired_temperature,sent,reason,source,queue_command_id&room_id=${roomFilter}&order=decided_at.desc&limit=50`),
     cloud.function("climate-history", { room_id: room.id, days }),
   ]);
@@ -535,7 +579,9 @@ async function showHistory(room, days = 1) {
   const events = [
     ...feedback.map((item) => ({
       at: item.recorded_at,
-      title: `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
+      title: item.snapshot?.manual_comfort_target
+        ? `${profileNames.get(item.user_id) || "家庭成員"}設定目標室溫 ${displayNumber(item.inferred_desired_room_temperature,1)}°C`
+        : `${profileNames.get(item.user_id) || "家庭成員"}回報「${feelings[item.feeling]}」`,
       detail: `${room.name} · ${item.local_date || "日期未記錄"} · ${seasons[item.season] || "季節未記錄"} · 室溫 ${displayNumber(item.snapshot?.temperature, 1)}° · 室外 ${displayNumber(item.snapshot?.outdoor_temperature, 1)}° · 濕度 ${displayNumber(item.snapshot?.humidity)}%${numericValue(item.snapshot?.tvoc) === null ? "" : ` · TVOC ${displayNumber(item.snapshot.tvoc)} ppb`}${numericValue(item.snapshot?.co2) === null ? "" : ` · eCO₂ ${displayNumber(item.snapshot.co2)} ppm`}`,
     })),
     ...decisions.map((item) => {
